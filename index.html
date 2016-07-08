@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fi">
+<meta charset="UTF-8">
+<script src="lib/d3.js"></script>
+<script src="lib/lodash.js"></script>
+<script src="lib/arr2.js"></script>
+
+<div id="game-container">
+</div>
+
+
+<script type="text/javascript">
+(function (){
+  var xdim = 14;
+  var ydim = 15;
+
+  var margin = { top: 0, bottom: 0, left: 0, right: 0 };
+  var width = 30 * xdim - margin.left - margin.right;
+  var height = 30 * ydim - margin.top - margin.bottom;
+  var gameCanvas = d3.select("#game-container")
+    .append("canvas")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .text("Sorry, your browser does not support HTML5 Canvas.")
+    .node();
+  var pieces = {
+    'A': { y0: -1,
+        p:
+          [[' ',' ',' '],
+          ['A',' ',' '],
+          ['A','A','A']] },
+    'B': { y0: 0,
+        p:
+          [['B','B'],
+          ['B','B']] },
+    'C': { y0: 0,
+        p:
+          [[' ','C',' '],
+          ['C','C','C'],
+          [' ',' ',' ']] },
+    'D': { y0: 0,
+        p:
+          [[' ',' ','D',' '],
+          [' ',' ','D',' '],
+          [' ',' ','D',' '],
+          [' ',' ','D',' ']] }
+  };
+  var bgSpace = arr2fill(arr2(xdim, ydim), '.');
+  var space = arr2fill(arr2(xdim, ydim), ' ');
+
+  var randomPiece = function() {
+    var keys = _.keys(pieces);
+    var x = Math.floor(Math.random() * keys.length);
+    return _.cloneDeep(pieces[keys[x]]);
+  };
+  var initActivePiece = function(a, piece) {
+    a.piece = piece;
+    a.x = xdim / 2 - Math.floor(piece.p[0].length / 2),
+    a.y = piece.y0
+  };
+  var activePiece = {
+    redraw: true
+  };
+  initActivePiece(activePiece, randomPiece());
+  console.log(activePiece);
+
+  var paste = function(to, u, v, src) {
+      arr2paste(to, u, v, src, ' ');
+  }
+
+  var drawBg0 = function(context, tick, xx, yy, ww, hh, c) {
+    context.fillStyle = "#FFFFFF";
+    context.fillRect(xx, yy, ww, hh);
+  };
+  var drawBg1 = function(context, tick, xx, yy, ww, hh, c, u, v) {
+    var x = xx+ww/20,
+      y = yy+hh/20,
+      w = ww*18/20,
+      h = hh*18/20
+      ;
+    if (c == ".") {
+      context.translate(x+w/2,y+h/2);
+      if (11 == (u*ydim+v) % 12) {
+        context.rotate(tick * 2 * Math.PI / 10000 % (2*Math.PI));
+      }
+      context.fillStyle = "#EEEEEE";
+      var f = 4;
+      context.fillRect(-w/2+w/f, -h/2+h/f, w*(f-2)/f*2, h*(f-2)/f);
+      context.setTransform(1, 0, 0, 1, 0, 0);
+    }
+  };
+
+  var fillTwoRects = function(context, xx, yy, ww, hh, cola, scalea, colb, scaleb) {
+    var x = xx+ww/scalea,
+      y = yy+hh/scalea,
+      w = ww*(scalea-2)/scalea,
+      h = hh*(scalea-2)/scalea
+      ;
+      context.fillStyle = cola;
+      context.fillRect(x, y, w, h);
+      context.fillStyle = colb;
+      context.fillRect(x + w/scaleb, y + h/scaleb, w*(scaleb-2)/scaleb, h*(scaleb-2)/scaleb);
+  };
+  var drawPiece = function(context, tick, xx, yy, ww, hh, c) {
+    if (c == "A") {
+      fillTwoRects(context, xx, yy, ww, hh,
+        "#000060", 80, "#6040A0", 10);
+    }
+    else if (c == "B") {
+      fillTwoRects(context, xx, yy, ww, hh,
+        "#6060F0", 80, "#C0C0F0", 10);
+    }
+    else if (c == "C") {
+      fillTwoRects(context, xx, yy, ww, hh,
+        "#A0A0F0", 80, "#202020", 4);
+    }
+    else if (c == "D") {
+      fillTwoRects(context, xx, yy, ww, hh,
+        "#D0D0D0", 80, "#FFFFFF", 4);
+    }
+  };
+  var drawBoardAt = (function() {
+    var ret = function(canvas, tick) {
+      var context = canvas.getContext("2d");
+      var pieceWidth = width / xdim;
+      var pieceHeight = height / ydim;
+      for(var x = 0; x < xdim; x++) {
+        for(var y = 0; y < ydim; y++) {
+          var c = bgSpace[y][x];
+          drawBg0(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight, c);
+        }
+      }
+      for(var x = 0; x < xdim; x++) {
+        for(var y = 0; y < ydim; y++) {
+          var c = bgSpace[y][x];
+          drawBg1(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight, c, x, y);
+        }
+      }
+      for(var x = 0; x < xdim; x++) {
+        for(var y = 0; y < ydim; y++) {
+          var c = space[y][x];
+          drawPiece(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight, c);
+        }
+      }
+      for(var y = 0; y < activePiece.piece.p.length; y++) {
+        for(var x = 0; x < activePiece.piece.p[y].length; x++) {
+          var c = activePiece.piece.p[y][x];
+          drawPiece(context, tick,
+            (x + activePiece.x) * pieceWidth,
+            (y + activePiece.y) * pieceHeight,
+            pieceWidth, pieceHeight, c);
+        }
+      }
+    };
+    return ret;
+  })();
+
+  var drawBoard = function() {
+    drawBoardAt(gameCanvas, new Date().getTime());
+  };
+
+  var destroyFullRows = function() {
+    for(var y = ydim - 1; y >= 0; y--) {
+      var full = true;
+      for(var x = 0; x < xdim; x++) {
+        if (space[y][x] == ' ') {
+          full = false;
+        }
+      }
+      if (full) {
+        space.splice(y, 1);
+        space.unshift(arr2(xdim, ydim)[0]);
+        drawBoard();
+        y++;
+      }
+    }
+  };
+
+  var testCrash = function(xy, p) {
+    var crash = false;
+    for(var y = 0; y < p.length; y++) {
+      for(var x = 0; x < p[y].length; x++) {
+        if (' ' != p[y][x] && 0 <= xy.y + y) {
+          if (space.length - 1 < y + xy.y) {
+            return true;
+          }
+          if (' ' != space[xy.y + y][xy.x + x]) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  document.onkeydown = function(event) {
+    if (37 == event.keyCode) {
+      if (!testCrash({y:activePiece.y, x:activePiece.x - 1}, activePiece.piece.p)) {
+        activePiece.x--;
+      }
+    } else if (39 == event.keyCode) {
+      if (!testCrash({y:activePiece.y, x:activePiece.x + 1}, activePiece.piece.p)) {
+        activePiece.x++;
+      }
+    } else if (38 == event.keyCode
+            || 34 == event.keyCode) {
+      var tmp = rcw(activePiece.piece.p);
+      if (!testCrash({y:activePiece.y, x:activePiece.x}, tmp)) {
+        activePiece.piece.p = tmp;
+      }
+    } else if (33 == event.keyCode) {
+      var tmp = rccw(activePiece.piece.p);
+      if (!testCrash({y:activePiece.y, x:activePiece.x}, tmp)) {
+        activePiece.piece.p = tmp;
+      }
+    } else if (40 == event.keyCode) {
+      if (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
+        activePiece.y++;
+      }
+    } else if (32 == event.keyCode) {
+      while (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
+        activePiece.y++;
+        drawBoard();
+      }
+      paste(space, activePiece.x, activePiece.y, activePiece.piece.p);
+      destroyFullRows();
+      initActivePiece(activePiece, randomPiece());
+    }
+    activePiece.redraw = true;
+  };
+  var drawThread = function() {
+      if (activePiece.redraw) {
+        drawBoard();
+        activePiece.redraw = false;
+      }
+      window.setTimeout(drawThread, 50);
+  };
+  drawThread();
+
+})();
+</script>
+
+</html>
