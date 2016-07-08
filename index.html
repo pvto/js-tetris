@@ -62,11 +62,10 @@
     redraw: true
   };
   initActivePiece(activePiece, randomPiece());
-  console.log(activePiece);
 
   var paste = function(to, u, v, src) {
       arr2paste(to, u, v, src, ' ');
-  }
+  };
 
   var drawBg0 = function(context, tick, xx, yy, ww, hh, c) {
     context.fillStyle = "#FFFFFF";
@@ -159,6 +158,12 @@
     drawBoardAt(gameCanvas, new Date().getTime());
   };
 
+  var renew = function() {
+    paste(space, activePiece.x, activePiece.y, activePiece.piece.p);
+    destroyFullRows();
+    initActivePiece(activePiece, randomPiece());
+  };
+  
   var destroyFullRows = function() {
     for(var y = ydim - 1; y >= 0; y--) {
       var full = true;
@@ -216,15 +221,15 @@
     } else if (40 == event.keyCode) {
       if (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
         activePiece.y++;
+      } else {
+        renew();
       }
     } else if (32 == event.keyCode) {
       while (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
         activePiece.y++;
         drawBoard();
       }
-      paste(space, activePiece.x, activePiece.y, activePiece.piece.p);
-      destroyFullRows();
-      initActivePiece(activePiece, randomPiece());
+      renew();
     }
     activePiece.redraw = true;
   };
