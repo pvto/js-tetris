@@ -88,11 +88,12 @@
     a.y = piece.y0
   };
   var activePiece = {
-    redraw: true, score: 0, level: 0
+    redraw: true, score: 0, level: 0,
+    timer: new Date().getTime()
   };
   BLOCK_SCORE = [0, 40, 100, 300, 1200];
   var scoreMessage = { x: width - block*1, y: height - block*0.5, text: "0",
-    font: "18px " + FONT, fill: "#00e000"};
+    font: "20px " + FONT, fill: "#00e000", xalign: -1 };
   var messages = [ scoreMessage ];
 
   initActivePiece(activePiece, randomPiece());
@@ -199,9 +200,18 @@
     var font = message.font || ("64px " + FONT);
     context.font = font;
     var measurex = context.measureText(message.text);
-    message.drawx = message.x - measurex.width / 2;
+    message.drawx = message.x + measurex.width * (((message.xalign||0.5)-1)/2);
     context.fillStyle = message.fill || "#D0D0D0";
     context.fillText(message.text, message.drawx, message.y);
+  };
+
+  var dropOne = function() {
+    if (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
+      activePiece.y++;
+    } else {
+      renew();
+    }
+    activePiece.redraw = true;
   };
 
   var renew = function() {
@@ -310,11 +320,7 @@
         activePiece.piece.p = tmp;
       }
     } else if (40 == event.keyCode) {
-      if (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
-        activePiece.y++;
-      } else {
-        renew();
-      }
+      dropOne();
     } else if (32 == event.keyCode) {
       while (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
         activePiece.y++;
@@ -325,11 +331,16 @@
     }
   };
   var drawThread = function() {
-      if (activePiece.redraw) {
-        drawBoard();
-        activePiece.redraw = false;
-      }
-      window.setTimeout(drawThread, 50);
+    var now = new Date().getTime();
+    if (now > activePiece.timer + 1000 / (activePiece.level + 1)) {
+      dropOne();
+      activePiece.timer = now;
+    }
+    if (activePiece.redraw) {
+      drawBoard();
+      activePiece.redraw = false;
+    }
+    window.setTimeout(drawThread, 50);
   };
   drawThread();
 
