@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="fi">
 <meta charset="UTF-8">
+<meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport' />
+
 <script src="lib/d3.js"></script>
 <script src="lib/lodash.js"></script>
 <script src="lib/arr2.js"></script>
@@ -453,6 +455,7 @@
 
   var createInput = function(text, action) {
     var action0 = function() {
+      d3.event.preventDefault();
       activePiece.redraw = true;
       if (activePiece.gameOver === true) {
         return;
