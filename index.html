@@ -462,7 +462,8 @@
     d3.select("#game-controls").append("button")
       .attr("type", "button")
       .text(text)
-      .on("click", action0);
+      .on("click", action0)
+      .style("width", (width / 7) + "px");
   };
   d3.select("#game-container").append("div").attr("id", "game-controls");
   createInput("↖", doRotCcw);
