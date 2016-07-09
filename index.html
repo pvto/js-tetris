@@ -53,26 +53,41 @@
   var FONT = "'Montserrat', sans-serif";
 
   var pieces = {
-    'A': { y0: -1,
+    'J': { y0: -1,
         p:
           [[' ',' ',' '],
           ['A',' ',' '],
           ['A','A','A']] },
-    'B': { y0: 0,
+    'L': { y0: -1,
+        p:
+          [[' ',' ',' '],
+          ['C',' ',' '],
+          ['C','C','C']] },
+    'O': { y0: 0,
         p:
           [['B','B'],
           ['B','B']] },
-    'C': { y0: 0,
+    'T': { y0: 0,
         p:
           [[' ','C',' '],
           ['C','C','C'],
           [' ',' ',' ']] },
-    'D': { y0: 0,
+    'I': { y0: 0,
         p:
           [[' ',' ','D',' '],
           [' ',' ','D',' '],
           [' ',' ','D',' '],
-          [' ',' ','D',' ']] }
+          [' ',' ','D',' ']] },
+    'Z': { y0: 0,
+        p:
+          [['A','A',' '],
+          [' ','A','A'],
+          [' ',' ',' ']]},
+    'S': { y0: 0,
+        p:
+          [[' ','C','C'],
+          ['C','C',' '],
+          [' ',' ',' ']]}
   };
   var bgSpace = arr2fill(arr2(xdim, ydim), '.');
   var space = arr2fill(arr2(xdim, ydim), ' ');
@@ -185,8 +200,17 @@
             pieceWidth, pieceHeight, c);
         }
       }
+
       messages.forEach(function(message, i) {
-        drawMessage(context, tick, message);
+        if (message.end && tick > message.end) {
+          var index = messages.indexOf(message);
+          messages.splice(index, 1);
+        }
+      });
+      messages.forEach(function(message, i) {
+        if (!message.start || message.start < tick) {
+          drawMessage(context, tick, message);
+        }
       });
     };
     return ret;
@@ -197,21 +221,37 @@
   };
 
   var drawMessage = function(context, tick, message) {
-    var font = message.font || ("64px " + FONT);
+    var font = message.font
+        || (block*xdim * 1.5 / (message.text.length + 1)) + "px " + FONT;
     context.font = font;
     var measurex = context.measureText(message.text);
-    message.drawx = message.x + measurex.width * (((message.xalign||0.5)-1)/2);
-    context.fillStyle = message.fill || "#D0D0D0";
+    message.drawx = message.x + measurex.width * (((message.xalign||0.0)-1)/2);
+    context.fillStyle = message.fill || "#4080B0";
     context.fillText(message.text, message.drawx, message.y);
   };
 
+  var addNotifyMessage = function(text, delay, duration, message) {
+    var start = new Date().getTime() + (delay || 0);
+    var message = message || {};
+    message.text = text;
+    message.start = start;
+    message.end = start + (duration || 1000);
+    message.x = message.x || block * xdim / 2;
+    message.y = message.y || block * ydim /4;
+    console.log(message);
+    messages.push(message);
+  };
+
   var dropOne = function() {
+    var count = 0;
     if (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
       activePiece.y++;
+      count++;
     } else {
       renew();
     }
     activePiece.redraw = true;
+    return count;
   };
 
   var renew = function() {
@@ -244,7 +284,15 @@
       }
     }
     if (n != 0) {
-      incrementScore( BLOCK_SCORE[n] * (activePiece.level + 1) );
+      var increment = BLOCK_SCORE[n] * (activePiece.level + 1);
+      if (xdim * ydim === arr2contains(space, ' ')) {
+        increment *= 4;
+        for(var tt = 0; tt < 1200; tt += 400) {
+          addNotifyMessage("4x points", tt, 200);
+          addNotifyMessage("4x POINTS", tt+200, 200);
+        }
+      }
+      incrementScore(increment);
     }
   };
 
@@ -320,16 +368,29 @@
         activePiece.piece.p = tmp;
       }
     } else if (40 == event.keyCode) {
-      dropOne();
+      incrementScore(dropOne());
     } else if (32 == event.keyCode) {
       while (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
         activePiece.y++;
-        incrementScore(1)
+        incrementScore(2)
         drawBoard();
       }
       renew();
     }
   };
+
+  var checkRedraw = function() {
+    var timed = false;
+    messages.forEach(function(message, i) {
+      if (message.end) {
+        timed = true;
+      }
+    });
+    if (timed === false) {
+      activePiece.redraw = false;
+    }
+  };
+
   var drawThread = function() {
     var now = new Date().getTime();
     if (now > activePiece.timer + 1000 / (activePiece.level + 1)) {
@@ -338,9 +399,9 @@
     }
     if (activePiece.redraw) {
       drawBoard();
-      activePiece.redraw = false;
+      checkRedraw();
     }
-    window.setTimeout(drawThread, 50);
+    window.setTimeout(drawThread, 25);
   };
   drawThread();
 
