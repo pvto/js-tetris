@@ -4,25 +4,54 @@
 <script src="lib/d3.js"></script>
 <script src="lib/lodash.js"></script>
 <script src="lib/arr2.js"></script>
+<link href='https://fonts.googleapis.com/css?family=Montserrat:700' rel='stylesheet' type='text/css'>
+
+<style>
+#game-container > h3 {
+  font-family: 'Montserrat', sans-serif;
+}
+</style>
 
 <div id="game-container">
+  <h3>↖←↑→↓_↗</h3>
 </div>
 
+<!-- Montserrat font -->
+<script type="text/javascript">
+  WebFontConfig = {
+    google: { families: [ 'Montserrat:700:latin' ] }
+  };
+  (function() {
+    var wf = document.createElement('script');
+    wf.src = 'https://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+    wf.type = 'text/javascript';
+    wf.async = 'true';
+    var s = document.getElementsByTagName('script')[0];
+    s.parentNode.insertBefore(wf, s);
+  })(); </script>
 
+
+<!-- Tetris -->
 <script type="text/javascript">
 (function (){
   var xdim = 14;
-  var ydim = 15;
+  var ydim = 20;
+  var block = 20;
 
-  var margin = { top: 0, bottom: 0, left: 0, right: 0 };
-  var width = 30 * xdim - margin.left - margin.right;
-  var height = 30 * ydim - margin.top - margin.bottom;
+  var margin = { top: block * 1, bottom: 0, left: 0, right: 0 };
+  var width = block * xdim - margin.left - margin.right;
+  var height = block * ydim - margin.top - margin.bottom;
   var gameCanvas = d3.select("#game-container")
     .append("canvas")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
     .text("Sorry, your browser does not support HTML5 Canvas.")
     .node();
+  var baseTransform = function(context) {
+    context.setTransform(1, 0, 0, 1, margin.left, margin.top);
+  };
+  var FONT = "'Montserrat', sans-serif";
+
   var pieces = {
     'A': { y0: -1,
         p:
@@ -59,15 +88,20 @@
     a.y = piece.y0
   };
   var activePiece = {
-    redraw: true
+    redraw: true, score: 0, level: 0
   };
+  BLOCK_SCORE = [0, 40, 100, 300, 1200];
+  var scoreMessage = { x: width - block*1, y: height - block*0.5, text: "0",
+    font: "18px " + FONT, fill: "#00e000"};
+  var messages = [ scoreMessage ];
+
   initActivePiece(activePiece, randomPiece());
 
   var paste = function(to, u, v, src) {
       arr2paste(to, u, v, src, ' ');
   };
 
-  var drawBg0 = function(context, tick, xx, yy, ww, hh, c) {
+  var drawBg0 = function(context, tick, xx, yy, ww, hh) {
     context.fillStyle = "#FFFFFF";
     context.fillRect(xx, yy, ww, hh);
   };
@@ -85,7 +119,7 @@
       context.fillStyle = "#EEEEEE";
       var f = 4;
       context.fillRect(-w/2+w/f, -h/2+h/f, w*(f-2)/f*2, h*(f-2)/f);
-      context.setTransform(1, 0, 0, 1, 0, 0);
+      baseTransform(context);
     }
   };
 
@@ -121,12 +155,12 @@
   var drawBoardAt = (function() {
     var ret = function(canvas, tick) {
       var context = canvas.getContext("2d");
+      baseTransform(context);
       var pieceWidth = width / xdim;
       var pieceHeight = height / ydim;
       for(var x = 0; x < xdim; x++) {
-        for(var y = 0; y < ydim; y++) {
-          var c = bgSpace[y][x];
-          drawBg0(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight, c);
+        for(var y = -1; y < ydim; y++) {
+          drawBg0(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight);
         }
       }
       for(var x = 0; x < xdim; x++) {
@@ -150,6 +184,9 @@
             pieceWidth, pieceHeight, c);
         }
       }
+      messages.forEach(function(message, i) {
+        drawMessage(context, tick, message);
+      });
     };
     return ret;
   })();
@@ -158,13 +195,29 @@
     drawBoardAt(gameCanvas, new Date().getTime());
   };
 
+  var drawMessage = function(context, tick, message) {
+    var font = message.font || ("64px " + FONT);
+    context.font = font;
+    var measurex = context.measureText(message.text);
+    message.drawx = message.x - measurex.width / 2;
+    context.fillStyle = message.fill || "#D0D0D0";
+    context.fillText(message.text, message.drawx, message.y);
+  };
+
   var renew = function() {
+    if (activePiece.gameOver === true) {
+      return;
+    }
     paste(space, activePiece.x, activePiece.y, activePiece.piece.p);
     destroyFullRows();
     initActivePiece(activePiece, randomPiece());
+    if (testCrash({y:activePiece.y, x:activePiece.x}, activePiece.piece.p)) {
+      gameOver();
+    }
   };
-  
+
   var destroyFullRows = function() {
+    var n = 0;
     for(var y = ydim - 1; y >= 0; y--) {
       var full = true;
       for(var x = 0; x < xdim; x++) {
@@ -177,7 +230,11 @@
         space.unshift(arr2(xdim, ydim)[0]);
         drawBoard();
         y++;
+        n++;
       }
+    }
+    if (n != 0) {
+      incrementScore( BLOCK_SCORE[n] * (activePiece.level + 1) );
     }
   };
 
@@ -185,6 +242,12 @@
     var crash = false;
     for(var y = 0; y < p.length; y++) {
       for(var x = 0; x < p[y].length; x++) {
+        if (0 > xy.y + y) {
+          if (' ' != p[y][x] &&
+              (xy.x + x < 0 || xy.x + x >= space[0].length)) {
+            return true;
+          }
+        }
         if (' ' != p[y][x] && 0 <= xy.y + y) {
           if (space.length - 1 < y + xy.y) {
             return true;
@@ -197,8 +260,36 @@
     }
     return false;
   };
+  var incrementScore = function(amount) {
+    activePiece.score += amount;
+    scoreMessage.text = activePiece.score + "";
+  }
+
+  var gameOver = function() {
+    if (activePiece,gameOver === true) { return; }
+    activePiece.gameOver = true;
+    var text = "Done!";
+    console.log(text);
+    messages.push({
+      text: text,
+      y: block * (ydim * 2 / 3),
+      x: block * (xdim / 2),
+      fill: "#000000",
+      font: (block*xdim * 1.5 / (text.length + 1)) + "px " + FONT
+    });
+    while (testCrash({y:activePiece.y, x:activePiece.x}, activePiece.piece.p)) {
+      activePiece.y--;
+    };
+    drawBoard();
+    activePiece.redraw = true;
+  };
 
   document.onkeydown = function(event) {
+    activePiece.redraw = true;
+
+    if (activePiece.gameOver === true) {
+      return;
+    }
     if (37 == event.keyCode) {
       if (!testCrash({y:activePiece.y, x:activePiece.x - 1}, activePiece.piece.p)) {
         activePiece.x--;
@@ -227,11 +318,11 @@
     } else if (32 == event.keyCode) {
       while (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
         activePiece.y++;
+        incrementScore(1)
         drawBoard();
       }
       renew();
     }
-    activePiece.redraw = true;
   };
   var drawThread = function() {
       if (activePiece.redraw) {
