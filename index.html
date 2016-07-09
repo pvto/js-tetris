@@ -104,7 +104,8 @@
   };
   var activePiece = {
     redraw: true, score: 0, level: 0,
-    timer: new Date().getTime()
+    timer: new Date().getTime(),
+    borrow: 0
   };
   BLOCK_SCORE = [0, 40, 100, 300, 1200];
   var scoreMessage = { x: width - block*0.5, y: block*1.5, text: "0",
@@ -341,6 +342,30 @@
     drawBoard();
     activePiece.redraw = true;
   };
+  var rotateWithsideLineBorrow = function(tmp) {
+    if (!testCrash({y:activePiece.y, x:activePiece.x + activePiece.borrow}, tmp)) {
+      activePiece.piece.p = tmp;
+      activePiece.x += activePiece.borrow;
+      activePiece.borrow = 0;
+    } else if (activePiece.borrow !== 0
+      && (!testCrash({y:activePiece.y, x:activePiece.x}, tmp))) {
+      activePiece.piece.p = tmp;
+    } else {
+      if (activePiece.x < 0) {
+        if (!testCrash({y:activePiece.y, x:activePiece.x + 1}, tmp)) {
+          activePiece.x++;
+          activePiece.borrow = -1;
+          activePiece.piece.p = tmp;
+        }
+      } else if (activePiece.x + activePiece.piece.p[0].length >= xdim) {
+        if (!testCrash({y:activePiece.y, x:activePiece.x - 1}, tmp)) {
+          activePiece.x--;
+          activePiece.borrow = 1;
+          activePiece.piece.p = tmp;
+        }
+      }
+    }
+  };
 
   document.onkeydown = function(event) {
     activePiece.redraw = true;
@@ -359,14 +384,10 @@
     } else if (38 == event.keyCode
             || 34 == event.keyCode) {
       var tmp = rcw(activePiece.piece.p);
-      if (!testCrash({y:activePiece.y, x:activePiece.x}, tmp)) {
-        activePiece.piece.p = tmp;
-      }
+      rotateWithsideLineBorrow(tmp);
     } else if (33 == event.keyCode) {
       var tmp = rccw(activePiece.piece.p);
-      if (!testCrash({y:activePiece.y, x:activePiece.x}, tmp)) {
-        activePiece.piece.p = tmp;
-      }
+      rotateWithsideLineBorrow(tmp);
     } else if (40 == event.keyCode) {
       incrementScore(dropOne());
     } else if (32 == event.keyCode) {
