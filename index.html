@@ -366,6 +366,30 @@
       }
     }
   };
+  var doSlideX = function(xadd) {
+    if (!testCrash({y:activePiece.y, x:activePiece.x + xadd}, activePiece.piece.p)) {
+      activePiece.x += xadd;
+    }
+  };
+  var doRotCw = function() {
+    var tmp = rcw(activePiece.piece.p);
+    rotateWithsideLineBorrow(tmp);
+  };
+  var doRotCcw = function() {
+    var tmp = rccw(activePiece.piece.p);
+    rotateWithsideLineBorrow(tmp);
+  };
+  var doDropOne = function() {
+    incrementScore(dropOne());
+  };
+  var doDropMany = function() {
+    while (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
+      activePiece.y++;
+      incrementScore(2)
+      drawBoard();
+    }
+    renew();
+  };
 
   document.onkeydown = function(event) {
     activePiece.redraw = true;
@@ -373,31 +397,13 @@
     if (activePiece.gameOver === true) {
       return;
     }
-    if (37 == event.keyCode) {
-      if (!testCrash({y:activePiece.y, x:activePiece.x - 1}, activePiece.piece.p)) {
-        activePiece.x--;
-      }
-    } else if (39 == event.keyCode) {
-      if (!testCrash({y:activePiece.y, x:activePiece.x + 1}, activePiece.piece.p)) {
-        activePiece.x++;
-      }
-    } else if (38 == event.keyCode
-            || 34 == event.keyCode) {
-      var tmp = rcw(activePiece.piece.p);
-      rotateWithsideLineBorrow(tmp);
-    } else if (33 == event.keyCode) {
-      var tmp = rccw(activePiece.piece.p);
-      rotateWithsideLineBorrow(tmp);
-    } else if (40 == event.keyCode) {
-      incrementScore(dropOne());
-    } else if (32 == event.keyCode) {
-      while (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
-        activePiece.y++;
-        incrementScore(2)
-        drawBoard();
-      }
-      renew();
-    }
+    if (37 == event.keyCode) { doSlideX(-1); }
+    else if (39 == event.keyCode) { doSlideX(1); }
+    else if (38 == event.keyCode || 34 == event.keyCode) {
+      doRotCw(); }
+    else if (33 == event.keyCode) { doRotCcw(); }
+    else if (40 == event.keyCode) { doDropOne(); }
+    else if (32 == event.keyCode) { doDropMany(); }
   };
 
   var checkRedraw = function() {
@@ -426,6 +432,27 @@
   };
   drawThread();
 
+  var createInput = function(text, action) {
+    var action0 = function() {
+      activePiece.redraw = true;
+      if (activePiece.gameOver === true) {
+        return;
+      }
+      action();
+    };
+    d3.select("#game-controls").append("button")
+      .attr("type", "button")
+      .text(text)
+      .on("click", action0);
+  };
+  d3.select("#game-container").append("div").attr("id", "game-controls");
+  createInput("↖", doRotCcw);
+  createInput("←", function(){ doSlideX(-1); });
+  createInput("↑", doRotCw);
+  createInput("→", function(){ doSlideX(1); });
+  createInput("↓", doDropOne);
+  createInput("_", doDropMany);
+  createInput("↗", doRotCw);
 })();
 </script>
 
