@@ -12,6 +12,8 @@
 #game-container {
   font-family: 'Montserrat', sans-serif;
   text-align: center;
+  cursor: pointer; /* enables mouse events on ios... :) */
+  -webkit-tap-highlight-color: rgba(0,0,0,0); /* ios, disable tap highlight flicker */
 }
 </style>
 
@@ -452,9 +454,8 @@
     var xright = offsetLeft + (activePiece.x + activePiece.piece.p[0].length) * block;
     var ytop = offsetTop + (activePiece.y) * block;
     var ybottom = offsetTop + (activePiece.y + activePiece.piece.p.length) * block;
-    console.log(event);
 
-    var margin = 10;
+    var margin = 5;
     if (event.clientX < xleft - margin) { doSlideX(-1); }
     else if (event.clientX > xright + margin) { doSlideX(1); }
     else {
