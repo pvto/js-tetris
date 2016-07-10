@@ -9,7 +9,14 @@
 <link href='https://fonts.googleapis.com/css?family=Montserrat:700' rel='stylesheet' type='text/css'>
 
 <style>
+body { background-color: #404040;}
+body, div, canvas, button-top {
+  padding: 0px;
+  margin: 0px;
+  border: 0px;
+}
 #game-container {
+  background-color: #404040;
   font-family: 'Montserrat', sans-serif;
   text-align: center;
   cursor: pointer; /* enables mouse events on ios... :) */
@@ -68,7 +75,7 @@
           [' ',' ',' ']] },
     'L': { y0: -1,
         p:
-          [['C',' ',' '],
+          [[' ',' ','C'],
           ['C','C','C'],
           [' ',' ',' ']] },
     'O': { y0: 0,
@@ -136,49 +143,43 @@
     context.fillRect(xx, yy, ww, hh);
   };
   var drawBg1 = function(context, tick, xx, yy, ww, hh, c, u, v) {
-    var x = xx+ww/20,
-      y = yy+hh/20,
-      w = ww*18/20,
-      h = hh*18/20
-      ;
     if (c == ".") {
-      context.translate(x+w/2,y+h/2);
-      if (11 == (u*ydim+v) % 12) {
-        context.rotate(tick * 2 * Math.PI / 100000 % (2*Math.PI));
+      if (21 == (u*ydim+v) % 26) {
+        context.translate(xx + ww/2,yy + hh/2);
+        context.rotate(tick * 2 * Math.PI / 10000 % (2*Math.PI));
+        fillTwoRects(context, 0, 0 , ww/2, hh/2,
+          "#000060", 80, "#FFFFFF", 100);
+        baseTransform(context);
       }
-      context.fillStyle = "#EEEEEE";
-      var f = 4;
-      context.fillRect(-w/2+w/f/2, -h/2+h/f/2, w*(f-2)/f, h*(f-2)/f*2);
-      baseTransform(context);
     }
   };
 
-  var fillTwoRects = function(context, xx, yy, ww, hh, cola, scalea, colb, scaleb) {
-    var x = xx+ww/scalea,
-      y = yy+hh/scalea,
-      w = ww*(scalea-2)/scalea,
-      h = hh*(scalea-2)/scalea
+  var fillTwoRects = function(context, x, y, ww, hh, cola, scalea, colb, scaleb) {
+    var w = ww*(scalea-2)/scalea,
+      h = hh*(scalea-2)/scalea,
+      w2 = w*(scaleb-2)/scaleb,
+      h2 = h*(scaleb-2)/scaleb
       ;
       context.fillStyle = cola;
-      context.fillRect(x, y, w, h);
+      context.fillRect(x - w/2, y - h/2, w, h);
       context.fillStyle = colb;
-      context.fillRect(x + w/scaleb, y + h/scaleb, w*(scaleb-2)/scaleb, h*(scaleb-2)/scaleb);
+      context.fillRect(x - w2/2, y - h2/2, w2, h2);
   };
   var drawPiece = function(context, tick, xx, yy, ww, hh, c) {
     if (c == "A") {
-      fillTwoRects(context, xx, yy, ww, hh,
+      fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
         "#000060", 80, "#6040A0", 10);
     }
     else if (c == "B") {
-      fillTwoRects(context, xx, yy, ww, hh,
+      fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
         "#6060F0", 80, "#C0C0F0", 10);
     }
     else if (c == "C") {
-      fillTwoRects(context, xx, yy, ww, hh,
+      fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
         "#A0A0F0", 80, "#202020", 4);
     }
     else if (c == "D") {
-      fillTwoRects(context, xx, yy, ww, hh,
+      fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
         "#D0D0D0", 80, "#FFFFFF", 4);
     }
   };
@@ -190,7 +191,7 @@
       var pieceHeight = height / ydim;
       for(var x = 0; x < xdim; x++) {
         for(var y = -1; y < ydim; y++) {
-          drawBg0(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight);
+          drawBg0(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth * 0.98, pieceHeight * 0.98);
         }
       }
       for(var x = 0; x < xdim; x++) {
@@ -215,12 +216,8 @@
         }
       }
 
-      messages.forEach(function(message, i) {
-        if (message.end && tick > message.end) {
-          var index = messages.indexOf(message);
-          messages.splice(index, 1);
-        }
-      });
+      removeOutdatedMessages(tick); // not really the place for this?
+
       messages.forEach(function(message, i) {
         if (!message.start || message.start < tick) {
           drawMessage(context, tick, message);
@@ -229,6 +226,15 @@
     };
     return ret;
   })();
+
+  var removeOutdatedMessages = function(tick) {
+    messages.forEach(function(message, i) {
+      if (message.end && tick > message.end) {
+        var index = messages.indexOf(message);
+        messages.splice(index, 1);
+      }
+    });
+  };
 
   var drawBoard = function() {
     drawBoardAt(gameCanvas, new Date().getTime());
@@ -508,7 +514,7 @@
       .attr("type", "button")
       .text(text)
       .on("click", action0)
-      .style("width", (width / 7) + "px")
+      .style("width", (width / 6) + "px")
       .style("height", (width / 10) + "px");
   };
   d3.select("#game-container").append("div").attr("id", "game-controls");
