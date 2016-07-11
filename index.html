@@ -46,6 +46,7 @@ button { background-color: #FFFFF0; }
 </div>
 
 <script type="text/javascript">
+var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 (function (){
   var wwdt = window.innerWidth;
   var whgt = window.innerHeight;
@@ -466,13 +467,12 @@ button { background-color: #FFFFF0; }
     return sum;
   };
 
-  document.onclick = function(event) {
-    activePiece.redraw = true;
+  document.onmousemove = function(event) {
+    if (activePiece.gameOver) { return; }
+    setCursor(event);
+  };
 
-    if (activePiece.gameOver|activePiece.paused === true) {
-      return;
-    }
-
+  var setCursor = function(event) {
     var node = document.getElementById("game-canvas");
     var offsetLeft = parentReduceSum(node, function(node) { return node.offsetLeft; });
     var offsetTop = parentReduceSum(node, function(node) { return node.offsetTop; });
@@ -481,16 +481,46 @@ button { background-color: #FFFFF0; }
     var ytop = offsetTop + (activePiece.y) * block;
     var ybottom = offsetTop + (activePiece.y + activePiece.piece.p.length) * block;
 
-    var margin = 5;
-    if (event.clientX < xleft - margin) { doSlideX(-1); }
-    else if (event.clientX > xright + margin) { doSlideX(1); }
+    var margin = 0;
+    var style = "pointer";
+    if (event.clientY > ybottom + block * 2) {
+      var factor = (event.clientX - (xright + xleft) / 2) * 1 / Math.pow(event.clientY - ybottom, 0.9);
+      if (factor < -1) { style = "w-resize"; }
+      else if (factor > 1) { style = "e-resize"; }
+      else { style = "s-resize"; }
+    }
+    else if (event.clientX < xleft - margin) { style = "w-resize"; }
+    else if (event.clientX > xright + margin) { style = "e-resize"; }
     else {
-      if (event.clientY > ybottom + margin) {
+      if (event.clientY > ybottom + margin + block) {
+        style = "s-resize";
+      }
+      else if (event.clientY > ytop - margin) { style = "all-scroll"; }
+      else {
+        if (event.clientX < xleft + block) { style = "w-resize"; }
+        else if (event.clientX > xright - block) { style = "e-resize"; }
+      }
+    }
+    if (!iOS) {
+      document.getElementById("game-container").style.cursor = style;
+    }
+    return style;
+  };
+
+  document.onclick = function(event) {
+    activePiece.redraw = true;
+
+    if (activePiece.gameOver|activePiece.paused === true) {
+      return;
+    }
+
+    var cursor = setCursor(event);
+    if ("w-resize" == cursor) { doSlideX(-1); }
+    else if ("e-resize" == cursor) { doSlideX(1); }
+    else if ("all-scroll" == cursor) { doRotCw(); }
+    else if ("s-resize" == cursor) {
         if (event.detail == 2) { doDropMany(); }
         else { doDropOne(); }
-      }
-      else if (event.clientY > ytop - margin) { doRotCw(); }
-      else { doRotCcw(); }
     }
   };
 
