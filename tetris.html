@@ -179,15 +179,15 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     }
     else if (c == "B") {
       fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
-        "#6060F0", 80, "#C0C0F0", 10);
+        "#404080", 80, "#C0C0F0", 10);
     }
     else if (c == "C") {
       fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
-        "#8080FF", 80, "#404040", 6);
+        "#404060", 80, "#808080", 4);
     }
     else if (c == "D") {
       fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
-        "#D0D0D0", 80, "#FFFFFF", 4);
+        "#B0B0B0", 80, "#FFFFFF", 4);
     }
   };
   var drawBoardAt = (function() {
@@ -354,7 +354,6 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   };
   var incrementScore = function(amount) {
     activePiece.score += amount;
-    scoreMessage.text = activePiece.score + "";
     incrementLevel();
   };
 
