@@ -1,2 +1,7 @@
 node_modules/
 API.md
+.firebaserc
+deploy.sh
+firebase.json
+public/
+
