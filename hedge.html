@@ -609,15 +609,17 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       .attr("type", "button")
       .text(text)
       .on("click", action0)
+      .style("border-radius", "10px")
+      .style("font-size", "26px")
       .style("width", (width / 6) + "px")
       .style("height", (width / 10) + "px");
   };
   d3.select("#game-container").append("div").attr("id", "game-controls");
   createInput("↶", doRotCcw);
   createInput("↷", doRotCw);
-  createInput("←", function(){ doSlideX(-1); });
-  createInput("↓", doDropOne);
-  createInput("→", function(){ doSlideX(1); });
+  createInput("⇦", function(){ doSlideX(-1); });
+  createInput("⇩", doDropOne);
+  createInput("⇨", function(){ doSlideX(1); });
   createInput("_", doDropMany);
 
 
