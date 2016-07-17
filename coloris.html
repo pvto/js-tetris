@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="fi">
+<meta charset="UTF-8">
+<meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport' />
+
+<script src="lib/d3.js"></script>
+<script src="lib/lodash.js"></script>
+<script src="lib/arr2.js"></script>
+<script src="lib/canvas-draw.js"></script>
+<link href='https://fonts.googleapis.com/css?family=Montserrat:700' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" type="text/css" href="css/common.css">
+
+
+<style>
+body { background-color: #F4F4F4;}
+</style>
+
+<!-- Montserrat font -->
+<script type="text/javascript">
+  WebFontConfig = {
+    google: { families: [ 'Montserrat:700:latin' ] }
+  };
+  (function() {
+    var wf = document.createElement('script');
+    wf.src = 'https://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+    wf.type = 'text/javascript';
+    wf.async = 'true';
+    var s = document.getElementsByTagName('script')[0];
+    s.parentNode.insertBefore(wf, s);
+  })(); </script>
+
+
+<!-- Tetris -->
+<div id="game-container">
+  Please enable javascript
+</div>
+
+<script type="text/javascript">
+var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+(function (){
+  var wwdt = window.innerWidth;
+  var whgt = window.innerHeight;
+  console.log(wwdt + " " + whgt);
+  var xdim = 14;
+  var ydim = 24;
+  var block = Math.min(wwdt * 0.9 / xdim, whgt * 0.9 / ydim);
+
+  var margin = { top: block * 1, bottom: 0, left: 0, right: 0 };
+  var width = block * xdim - margin.left - margin.right;
+  var height = block * ydim - margin.top - margin.bottom;
+  var gameCanvas = d3.select("#game-container")
+      .text("")
+    .append("canvas")
+    .attr("id", "game-canvas")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .text("Sorry, your browser does not support HTML5 Canvas.")
+    .node();
+  var baseTransform = function(context) {
+    context.setTransform(1, 0, 0, 1, margin.left, margin.top);
+  };
+  var FONT = "'Montserrat', sans-serif";
+
+
+  var pieces = {
+    'J': { y0: -1,
+        p:
+          [['A',' ',' '],
+          ['A','A','A'],
+          [' ',' ',' ']] },
+    'L': { y0: -1,
+        p:
+          [[' ',' ','C'],
+          ['C','C','C'],
+          [' ',' ',' ']] },
+    'O': { y0: 0,
+        p:
+          [['B','B'],
+          ['B','B']] },
+    'T': { y0: 0,
+        p:
+          [[' ','C',' '],
+          ['C','C','C'],
+          [' ',' ',' ']] },
+    'I': { y0: 0,
+        p:
+          [[' ',' ','D',' '],
+          [' ',' ','D',' '],
+          [' ',' ','D',' '],
+          [' ',' ','D',' ']] },
+    'Z': { y0: 0,
+        p:
+          [['A','A',' '],
+          [' ','A','A'],
+          [' ',' ',' ']]},
+    'S': { y0: 0,
+        p:
+          [[' ','C','C'],
+          ['C','C',' '],
+          [' ',' ',' ']]}
+  };
+  var EMPTYPIECE = { y0: 0, p: [[' ']] };
+
+
+  var bgSpace = arr2fill(arr2(xdim, ydim), '.');
+  var space = arr2fill(arr2(xdim, ydim), ' ');
+
+
+  var rndColors = ['A','B','C','D','E','F'];
+
+  var randomPiece = (function() {
+    return function() {
+      var keys = _.keys(pieces);
+      var x = Math.floor(Math.random() * keys.length);
+      var piece = _.cloneDeep(pieces[keys[x]]);
+      var fill = rndColors[Math.floor(Math.random() * rndColors.length)];
+      arr2walk(piece.p, function(A, i) { if (A[i] != ' ') { A[i] = fill; } });
+      return piece;
+    };
+  })();
+  var initActivePiece = function(a, piece) {
+    a.piece = piece;
+    a.x = xdim / 2 - Math.floor(piece.p[0].length / 2),
+    a.y = piece.y0
+  };
+
+  var timeZero = new Date().getTime();
+  var activePiece = {
+    redraw: true, score: 0, level: 0,
+    timer: timeZero, paused: false,
+    borrow: 0
+  };
+  BLOCK_SCORE = [0, 40, 100, 300, 1200, 6000, 40000, 300000, 2500000];
+  var scoreMessage = { x: width - block*0.5, y: block*1.5,
+    text: function() { return activePiece.score + ""; },
+    font: "20px " + FONT, fill: "#006060", xalign: -1 };
+  var levelMessage = { x: block*0.5, y: block*1.5,
+    text: function() { return "LEVEL " + activePiece.level;},
+    font: "20px " + FONT, fill: "#000000", xalign: 1 };
+  var pausedMessage = { x: width / 2, y: block*6,
+    text: "PAUSED",
+    fill: "#000000", xalign: 0 };
+  var messages = [ scoreMessage, levelMessage ];
+
+  initActivePiece(activePiece, randomPiece());
+
+  var paste = function(to, u, v, src) {
+      arr2paste(to, u, v, src, ' ');
+  };
+
+  var drawBg0 = function(context, tick, xx, yy, ww, hh) {
+    context.fillStyle = "#FFFFFF";
+    context.fillRect(xx, yy, ww * 0.98, hh * 0.99);
+  };
+  var drawBg1 = function(context, tick, xx, yy, ww, hh, c, u, v) {
+    if (c == ".") {
+    }
+  };
+
+  var wh12 = function(ww,hh,scalea,scaleb) {
+    var w = ww*(scalea-2)/scalea,
+      h = hh*(scalea-2)/scalea,
+      w2 = w*(scaleb-2)/scaleb,
+      h2 = h*(scaleb-2)/scaleb;
+    return {w:w, h:h, w2:w2, h2:h2};
+  };
+  var fillRectAndCircle = function(context, x, y, ww, hh, cola, scalea, colb, scaleb) {
+    var wh = wh12(ww,hh,scalea,scaleb);
+    fillCenteredRect(context, x, y, wh.w, wh.h, cola);
+    fillCircle(context, x, y, wh.w2/2, colb);
+  };
+  var drawPiece = function(context, tick, xx, yy, ww, hh, c) {
+    if (c == "A") {
+      fillRectAndCircle(context, xx+ww/2, yy+hh/2, ww, hh,
+        "#800000", 80, "#E00000", 4);
+    }
+    else if (c == "B") {
+      fillRectAndCircle(context, xx+ww/2, yy+hh/2, ww, hh,
+        "#000080", 80, "#0000E0", 3);
+    }
+    else if (c == "C") {
+      fillRectAndCircle(context, xx+ww/2, yy+hh/2, ww, hh,
+        "#600060", 80, "#D000D0", 3);
+    }
+    else if (c == "D") {
+      fillRectAndCircle(context, xx+ww/2, yy+hh/2, ww, hh,
+        "#C08000", 80, "#FFA000", 4);
+    }
+    else if (c == 'E') {
+      fillRectAndCircle(context, xx+ww/2, yy+hh/2, ww, hh,
+        "#004000", 80, "#40FF20", 20);
+    }
+    else if (c == 'F') {
+      fillRectAndCircle(context, xx+ww/2, yy+hh/2, ww, hh,
+        "#B0B000", 80, "#FFFF00", 20);
+    }
+  };
+  var drawBoardAt = (function() {
+    var ret = function(canvas, tick) {
+      var context = canvas.getContext("2d");
+      baseTransform(context);
+      var pieceWidth = width / xdim;
+      var pieceHeight = height / ydim;
+      for(var x = 0; x < xdim; x++) {
+        for(var y = -1; y < ydim; y++) {
+          drawBg0(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight);
+        }
+      }
+      for(var x = 0; x < xdim; x++) {
+        for(var y = 0; y < ydim; y++) {
+          var c = bgSpace[y][x];
+          drawBg1(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight, c, x, y);
+        }
+      }
+      for(var x = 0; x < xdim; x++) {
+        for(var y = 0; y < ydim; y++) {
+          var c = space[y][x];
+          drawPiece(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight, c);
+        }
+      }
+      for(var y = 0; y < activePiece.piece.p.length; y++) {
+        for(var x = 0; x < activePiece.piece.p[y].length; x++) {
+          var c = activePiece.piece.p[y][x];
+          drawPiece(context, tick,
+            (x + activePiece.x) * pieceWidth,
+            (y + activePiece.y) * pieceHeight,
+            pieceWidth, pieceHeight, c);
+        }
+      }
+
+      removeOutdatedMessages(tick);
+
+      messages.forEach(function(message, i) {
+        if (!message.start || message.start < tick) {
+          drawMessage(context, tick, message);
+        }
+      });
+    };
+    return ret;
+  })();
+
+  var remove = function(arr, item) {
+    var index = arr.indexOf(item);
+    arr.splice(index, 1);
+  };
+
+  var removeOutdatedMessages = function(tick) {
+    messages.forEach(function(message, i) {
+      if (message.end && tick > message.end) {
+        remove(messages, message);
+      }
+    });
+  };
+
+  var drawBoard = function() {
+    drawBoardAt(gameCanvas, new Date().getTime());
+  };
+
+  var drawMessage = function(context, tick, message) {
+    var text = _.isFunction(message.text) ? message.text() : message.text;
+    var font = message.font
+        || (block*xdim * 1.5 / (text.length + 1)) + "px " + FONT;
+    context.font = font;
+    var measurex = context.measureText(text);
+    message.drawx = message.x + measurex.width * (((message.xalign||0.0)-1)/2);
+    context.fillStyle = message.fill || "#4080B0";
+    context.fillText(text, message.drawx, message.y);
+  };
+
+  var addNotifyMessage = function(text, delay, duration, message) {
+    var start = new Date().getTime() + (delay || 0);
+    var message = message || {};
+    message.text = text;
+    message.start = start;
+    message.end = start + (duration || 1000);
+    message.x = message.x || block * xdim / 2;
+    message.y = message.y || block * ydim /4;
+    messages.push(message);
+  };
+
+  var dropOne = function() {
+    var count = 0;
+    if (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
+      activePiece.y++;
+      count++;
+    } else {
+      renew();
+    }
+    activePiece.redraw = true;
+    return count;
+  };
+
+  var renew = function() {
+    if (activePiece.gameOver === true) {
+      return;
+    }
+    paste(space, activePiece.x, activePiece.y, activePiece.piece.p);
+    destroyGroupsOfUniformColor(12);
+    initActivePiece(activePiece, randomPiece());
+    if (testCrash({y:activePiece.y, x:activePiece.x}, activePiece.piece.p)) {
+      gameOver();
+    }
+  };
+
+  var destroyGroupsOfUniformColor = (function() {
+    return function(minGroupSize) {
+      var isSame = function(val) {
+        return function(x) { return x == val; }
+      };
+      var foundSomething = true;
+      while(foundSomething) {
+        foundSomething = false;
+        var processed = _.cloneDeep(space);
+        var MARK = 10000;
+        for(var y = processed.length - 1; y >= 0; y--) {
+          for(var x = 0; x < processed[y].length; x++) {
+            if (_.isNumber(processed[y][x])
+              || ' ' === processed[y][x]) {
+              continue;
+            }
+            var identityF = isSame(processed[y][x]);
+            var stack = [];
+            arr2color(processed, x, y, identityF, MARK, function(arr2, x, y) {
+              arr2[y][x] = MARK;
+              stack.push([x,y]);
+            });
+            if (stack.length >= minGroupSize) {
+              foundSomething = true;
+              stack.forEach(function (xy) {
+                space[xy[1]][xy[0]] = MARK;
+              });
+              arr2RemoveAndRollYDown(space, isSame(MARK), ' ');
+              x = processed[y].length;  y = 0;  // breakout
+              incrementScore(Math.pow(stack.length - minGroupSize + 1, 2));
+              activePiece.piece = EMPTYPIECE; // temporarily, so that drawing doesn't bug!
+              drawBoard();
+              activePiece.redraw = true;
+            }
+          }
+          MARK++;
+        }
+      }
+    };
+  })();
+
+
+  var testCrash = function(xy, p) {
+    var crash = false;
+    for(var y = 0; y < p.length; y++) {
+      for(var x = 0; x < p[y].length; x++) {
+        if (0 > xy.y + y) {
+          if (' ' != p[y][x] &&
+              (xy.x + x < 0 || xy.x + x >= space[0].length)) {
+            return true;
+          }
+        }
+        if (' ' != p[y][x] && 0 <= xy.y + y) {
+          if (space.length - 1 < y + xy.y) {
+            return true;
+          }
+          if (' ' != space[xy.y + y][xy.x + x]) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+  var incrementScore = function(amount) {
+    activePiece.score += amount;
+    scoreMessage.text = activePiece.score + "";
+    incrementLevel();
+  };
+
+  var incrementLevel = function() {
+    var requiredPoints = 3000 * Math.pow(activePiece.level + 1, 2);
+    if (activePiece.score > requiredPoints) {
+      activePiece.level++;
+    }
+  };
+
+  var gameOver = function() {
+    if (activePiece,gameOver === true) { return; }
+    activePiece.gameOver = true;
+    var text = "Done!";
+    console.log(text);
+    messages.push({
+      text: text,
+      y: block * (ydim * 2 / 3),
+      x: block * (xdim / 2),
+      fill: "#000000",
+      font: (block*xdim * 1.5 / (text.length + 1)) + "px " + FONT
+    });
+    while (testCrash({y:activePiece.y, x:activePiece.x}, activePiece.piece.p)) {
+      activePiece.y--;
+    };
+    drawBoard();
+    activePiece.redraw = true;
+  };
+
+  var rotateWithsideLineBorrow = function(tmp) {
+    if (!testCrash({y:activePiece.y, x:activePiece.x + activePiece.borrow}, tmp)) {
+      activePiece.piece.p = tmp;
+      activePiece.x += activePiece.borrow;
+      activePiece.borrow = 0;
+    } else if (activePiece.borrow !== 0
+      && (!testCrash({y:activePiece.y, x:activePiece.x}, tmp))) {
+      activePiece.piece.p = tmp;
+    } else {
+      if (activePiece.x < 0) {
+        if (!testCrash({y:activePiece.y, x:activePiece.x + 1}, tmp)) {
+          activePiece.x++;
+          activePiece.borrow = -1;
+          activePiece.piece.p = tmp;
+        }
+      } else if (activePiece.x + activePiece.piece.p[0].length >= xdim) {
+        if (!testCrash({y:activePiece.y, x:activePiece.x - 1}, tmp)) {
+          activePiece.x--;
+          activePiece.borrow = 1;
+          activePiece.piece.p = tmp;
+        }
+      }
+    }
+  };
+  var doSlideX = function(xadd) {
+    if (!testCrash({y:activePiece.y, x:activePiece.x + xadd}, activePiece.piece.p)) {
+      activePiece.x += xadd;
+    }
+  };
+  var doRotCw = function() {
+    var tmp = rcw(activePiece.piece.p);
+    rotateWithsideLineBorrow(tmp);
+  };
+  var doRotCcw = function() {
+    var tmp = rccw(activePiece.piece.p);
+    rotateWithsideLineBorrow(tmp);
+  };
+  var doDropOne = function() {
+    incrementScore(dropOne());
+  };
+  var doDropMany = function() {
+    while (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
+      activePiece.y++;
+      incrementScore(2)
+      drawBoard();
+    }
+    renew();
+  };
+  var doPause = function() {
+    activePiece.paused = !activePiece.paused;
+    if (activePiece.paused) { messages.push(pausedMessage); }
+    else { remove(messages, pausedMessage); }
+  };
+
+  document.onkeydown = function(event) {
+    activePiece.redraw = true;
+
+    if (activePiece.gameOver === true) {
+      return; }
+
+    if (80 == event.keyCode) { doPause(); }
+    if (activePiece.paused) {
+      return; }
+
+    if (37 == event.keyCode) { doSlideX(-1); }
+    else if (39 == event.keyCode) { doSlideX(1); }
+    else if (38 == event.keyCode || 34 == event.keyCode) {
+      doRotCw(); }
+    else if (33 == event.keyCode) { doRotCcw(); }
+    else if (40 == event.keyCode) { doDropOne(); }
+    else if (32 == event.keyCode) { doDropMany(); }
+
+  };
+
+
+  var parentReduceSum = function(node, f) {
+    var sum = 0;
+    while (node) {
+      sum += (f(node) || 0);
+      node = node.parentNode;
+    }
+    return sum;
+  };
+
+  document.onmousemove = function(event) {
+    if (activePiece.gameOver) { return; }
+    setCursor(event);
+  };
+
+  var setCursor = function(event) {
+    var node = document.getElementById("game-canvas");
+    var offsetLeft = parentReduceSum(node, function(node) { return node.offsetLeft; });
+    var offsetTop = parentReduceSum(node, function(node) { return node.offsetTop; });
+    var xleft = offsetLeft + (activePiece.x) * block;
+    var xright = offsetLeft + (activePiece.x + activePiece.piece.p[0].length) * block;
+    var ytop = offsetTop + (activePiece.y) * block;
+    var ybottom = offsetTop + (activePiece.y + activePiece.piece.p.length) * block;
+
+    var margin = 0;
+    var style = "pointer";
+    if (event.clientY > ybottom + block * 2) {
+      var factor = (event.clientX - (xright + xleft) / 2) * 1 / Math.pow(event.clientY - ybottom, 0.9);
+      if (factor < -1) { style = "w-resize"; }
+      else if (factor > 1) { style = "e-resize"; }
+      else { style = "s-resize"; }
+    }
+    else if (event.clientX < xleft - margin) { style = "w-resize"; }
+    else if (event.clientX > xright + margin) { style = "e-resize"; }
+    else {
+      if (event.clientY > ybottom + margin + block) {
+        style = "s-resize";
+      }
+      else if (event.clientY > ytop - margin) { style = "all-scroll"; }
+      else {
+        if (event.clientX < xleft + block) { style = "w-resize"; }
+        else if (event.clientX > xright - block) { style = "e-resize"; }
+      }
+    }
+    if (!iOS) {
+      document.getElementById("game-container").style.cursor = style;
+    }
+    return style;
+  };
+
+  document.onclick = function(event) {
+    activePiece.redraw = true;
+
+    if (activePiece.gameOver|activePiece.paused === true) {
+      return;
+    }
+
+    var cursor = setCursor(event);
+    if ("w-resize" == cursor) { doSlideX(-1); }
+    else if ("e-resize" == cursor) { doSlideX(1); }
+    else if ("all-scroll" == cursor) { doRotCw(); }
+    else if ("s-resize" == cursor) {
+        if (event.detail == 2) { doDropMany(); }
+        else { doDropOne(); }
+    }
+  };
+
+  var createInput = function(text, action) {
+    var action0 = function() {
+      d3.event.preventDefault();
+      d3.event.stopPropagation()
+      activePiece.redraw = true;
+      if (activePiece.gameOver|activePiece.paused === true) {
+        return;
+      }
+      action();
+    };
+    d3.select("#game-controls").append("button")
+      .attr("type", "button")
+      .attr("class", "noselect")
+      .text(text)
+      .on("click", action0)
+      .style("border-radius", "10px")
+      .style("font-size", "26px")
+      .style("width", (width / 6) + "px")
+      .style("height", (width / 10) + "px");
+  };
+  d3.select("#game-container").append("div").attr("id", "game-controls");
+  createInput("↶", doRotCcw);
+  createInput("↷", doRotCw);
+  createInput("⇦", function(){ doSlideX(-1); });
+  createInput("⇩", doDropOne);
+  createInput("⇨", function(){ doSlideX(1); });
+  createInput("_", doDropMany);
+
+
+
+  var checkRedraw = function() {
+    var timed = false;
+    messages.forEach(function(message, i) {
+      if (message.end) {
+        timed = true;
+      }
+    });
+    if (timed === false) {
+      activePiece.redraw = false;
+    }
+  };
+
+  var drawThread = function() {
+    var now = new Date().getTime();
+    if (!activePiece.paused
+        && now > activePiece.timer + 1000 / (activePiece.level + 1)) {
+      dropOne();
+      activePiece.timer = now;
+    }
+    if (activePiece.redraw) {
+      drawBoard();
+      checkRedraw();
+    }
+    window.setTimeout(drawThread, 25);
+  };
+  drawThread();
+
+})();
+</script>
+
+</html>
