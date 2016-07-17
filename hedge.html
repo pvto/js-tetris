@@ -8,22 +8,11 @@
 <script src="lib/arr2.js"></script>
 <script src="lib/canvas-draw.js"></script>
 <link href='https://fonts.googleapis.com/css?family=Montserrat:700' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" type="text/css" href="css/common.css">
+
 
 <style>
 body { background-color: #F4F4F4;}
-body, div, canvas, button-top {
-  padding: 0px;
-  margin: 0px;
-  border: 0px;
-}
-button { background-color: #FFFFF0; }
-#game-container {
-  background-color: #F4F4F4;
-  font-family: 'Montserrat', sans-serif;
-  text-align: center;
-  cursor: pointer; /* enables mouse events on ios... :) */
-  -webkit-tap-highlight-color: rgba(0,0,0,0); /* ios, disable tap highlight flicker */
-}
 </style>
 
 <!-- Montserrat font -->
@@ -607,6 +596,7 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     };
     d3.select("#game-controls").append("button")
       .attr("type", "button")
+      .attr("class", "noselect")
       .text(text)
       .on("click", action0)
       .style("border-radius", "10px")

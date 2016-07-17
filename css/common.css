@@ -1,0 +1,27 @@
+
+.noselect {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+
+body, div, canvas, button-top {
+  padding: 0px;
+  margin: 0px;
+  border: 0px;
+}
+
+button { background-color: #FFFFF0; }
+
+
+#game-container {
+  background-color: #F4F4F4;
+  font-family: 'Montserrat', sans-serif;
+  text-align: center;
+  cursor: pointer; /* enables mouse events on ios... :) */
+  -webkit-tap-highlight-color: rgba(0,0,0,0); /* ios, disable tap highlight flicker */
+}
