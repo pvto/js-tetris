@@ -29,6 +29,7 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   var wwdt = window.innerWidth;
   var whgt = window.innerHeight;
   console.log(wwdt + " " + whgt);
+//  var xdim = 6, ydim = 10; // quite demanding!
   var xdim = 14;
   var ydim = 24;
   var block = Math.min(wwdt * 0.9 / xdim, whgt * 0.9 / ydim);
@@ -283,7 +284,9 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       return;
     }
     paste(space, activePiece.x, activePiece.y, activePiece.piece.p);
-    destroyGroupsOfUniformColor(12);
+    if (destroyGroupsOfUniformColor(12) > 0) {
+      leverDetachedGroups();
+    }
     initActivePiece(activePiece, randomPiece());
     if (testCrash({y:activePiece.y, x:activePiece.x}, activePiece.piece.p)) {
       gameOver();
@@ -295,6 +298,7 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       var isSame = function(val) {
         return function(x) { return x == val; }
       };
+      var destroyedGroupCount = 0;
       var foundSomething = true;
       while(foundSomething) {
         foundSomething = false;
@@ -317,12 +321,72 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
               stack.forEach(function (xy) {
                 space[xy[1]][xy[0]] = MARK;
               });
-              arr2RemoveAndRollYDown(space, isSame(MARK), ' ');
+              arr2Replace(space, isSame(MARK), ' ');
               x = processed[y].length;  y = 0;  // breakout
               incrementScore(Math.pow(stack.length - minGroupSize + 1, 2));
               activePiece.piece = EMPTYPIECE; // temporarily, so that drawing doesn't bug!
               drawBoard();
               activePiece.redraw = true;
+              destroyedGroupCount++;
+            }
+          }
+          MARK++;
+        }
+      }
+      return destroyedGroupCount;
+    };
+  })();
+
+  var leverDetachedGroups = (function() {
+    return function() {
+      var isEmpty = function(x) { return x === ' '; };
+      var notEmptyNotNumeric = function(x) {
+        return !isEmpty(x) && !_.isNumber(x);
+      };
+      var leveredGroupCount = 0;
+      var startY = 0;
+      var foundSomething = true;
+      while(foundSomething) {
+        foundSomething = false;
+        var processed = _.cloneDeep(space);
+        var MARK = 10000;
+        for(var y = startY; y < processed.length; y++) {
+          for(var x = 0; x < processed[y].length; x++) {
+            if (isEmpty(processed[y][x])) {
+              continue;
+            }
+            if (_.isNumber(processed[y][x])) {
+              continue;
+            }
+            var maxY = 0, minY = ydim;
+            var stack = [];
+            arr2color(processed, x, y, notEmptyNotNumeric, MARK, function(arr2, x, y) {
+              arr2[y][x] = MARK;
+              stack.push([x,y]);
+              maxY = Math.max(maxY, y);
+              minY = Math.min(minY, y);
+            });
+            if (maxY < ydim - 1) {
+              foundSomething = true;
+              startY = arr2colMin(stack, 1);
+              stack.sort(function(a,b){ // sort desc by y
+                if (a[1] < b[1]) { return 1; }
+                else if (a[1] > b[1]) { return -1; }
+                else { return 0}
+              });
+              stack.forEach(function (xy) {
+                var u = xy[0], v = xy[1];
+                while(v < ydim - 1 && ' ' == space[v+1][u]) {
+                  space[v+1][u] = space[v][u];
+                  space[v][u] = ' ';
+                  v++;
+                }
+              });
+              x = processed[y].length;  y = 0;  // breakout
+              activePiece.piece = EMPTYPIECE; // temporarily, so that drawing doesn't bug!
+              drawBoard();
+              activePiece.redraw = true;
+              leveredGroupCount++;
             }
           }
           MARK++;
@@ -330,7 +394,6 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       }
     };
   })();
-
 
   var testCrash = function(xy, p) {
     var crash = false;
