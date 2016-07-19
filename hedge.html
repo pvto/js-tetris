@@ -457,7 +457,9 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   var doSlideX = function(xadd) {
     if (!testCrash({y:activePiece.y, x:activePiece.x + xadd}, activePiece.piece.p)) {
       activePiece.x += xadd;
+      return true;
     }
+    return false;
   };
   var doRotCw = function() {
     var tmp = rcw(activePiece.piece.p);
@@ -494,7 +496,9 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     if (activePiece.paused) {
       return; }
 
-    if (37 == event.keyCode) { doSlideX(-1); }
+    if (37 == event.keyCode && event.ctrlKey)      { while(doSlideX(-1)) {}; }
+    else if (37 == event.keyCode) { doSlideX(-1); }
+    else if (39 == event.keyCode && event.ctrlKey) { while(doSlideX(1)) {}; }
     else if (39 == event.keyCode) { doSlideX(1); }
     else if (38 == event.keyCode || 34 == event.keyCode) {
       doRotCw(); }
