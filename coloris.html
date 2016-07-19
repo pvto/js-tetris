@@ -32,6 +32,7 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 //  var xdim = 6, ydim = 10; // quite demanding!
   var xdim = 10;
   var ydim = 14;
+  var MIN_GROUP_SIZE = 12;
   var block = Math.min(wwdt * 0.9 / xdim, whgt * 0.9 / ydim);
 
   var margin = { top: block * 1, bottom: 0, left: 0, right: 0 };
@@ -132,6 +133,21 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   var messages = [ scoreMessage, levelMessage ];
 
   initActivePiece(activePiece, randomPiece());
+
+  var addNotifyMessage = function(text, delay, duration, message) {
+    var start = new Date().getTime() + (delay || 0);
+    var message = message || {};
+    message.text = text;
+    message.start = start;
+    message.end = start + (duration || 1000);
+    message.x = message.x || block * xdim / 2;
+    message.y = message.y || block * ydim /4;
+    messages.push(message);
+  };
+  for(var tt = 0; tt < 2000; tt += 400) {
+    addNotifyMessage("GET " + MIN_GROUP_SIZE, tt, 200);
+  }
+
 
   var paste = function(to, u, v, src) {
       arr2paste(to, u, v, src, ' ');
@@ -256,16 +272,7 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     context.fillText(text, message.drawx, message.y);
   };
 
-  var addNotifyMessage = function(text, delay, duration, message) {
-    var start = new Date().getTime() + (delay || 0);
-    var message = message || {};
-    message.text = text;
-    message.start = start;
-    message.end = start + (duration || 1000);
-    message.x = message.x || block * xdim / 2;
-    message.y = message.y || block * ydim /4;
-    messages.push(message);
-  };
+
 
   var dropOne = function() {
     var count = 0;
@@ -284,9 +291,7 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       return;
     }
     paste(space, activePiece.x, activePiece.y, activePiece.piece.p);
-    if (destroyGroupsOfUniformColor(12) > 0) {
-      leverDetachedGroups();
-    }
+    destroyGroupsOfUniformColor(MIN_GROUP_SIZE);
     initActivePiece(activePiece, randomPiece());
     if (testCrash({y:activePiece.y, x:activePiece.x}, activePiece.piece.p)) {
       gameOver();
@@ -333,7 +338,9 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
           MARK++;
         }
       }
-      return destroyedGroupCount;
+      if (destroyedGroupCount > 0) {
+        leverDetachedGroups();
+      }
     };
   })();
 
@@ -359,12 +366,14 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
               continue;
             }
             var maxY = 0, minY = ydim;
+            var maxYbyX = {};
             var stack = [];
             arr2color(processed, x, y, notEmptyNotNumeric, MARK, function(arr2, x, y) {
               arr2[y][x] = MARK;
               stack.push([x,y]);
               maxY = Math.max(maxY, y);
               minY = Math.min(minY, y);
+              maxYbyX[x] = Math.max(y, maxYbyX[x]||0);
             });
             if (maxY < ydim - 1) {
               foundSomething = true;
@@ -374,12 +383,23 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
                 else if (a[1] > b[1]) { return -1; }
                 else { return 0}
               });
+              var minDrop = 1;
+              _.keys(maxYbyX).forEach(function(x) {
+                if (!isEmpty(space[maxYbyX[x]][x])) {
+                  var v = maxYbyX[x] + 1;
+                  var n = 1;
+                  while(v < ydim - 1 && isEmpty(space[v][x])) {
+                    v++;
+                    n++;
+                  }
+                  minDrop = Math.min(minDrop, n);
+                }
+              });
               stack.forEach(function (xy) {
                 var u = xy[0], v = xy[1];
-                while(v < ydim - 1 && ' ' == space[v+1][u]) {
-                  space[v+1][u] = space[v][u];
-                  space[v][u] = ' ';
-                  v++;
+                for(var i = 0; i < minDrop; i++) {
+                  space[v+i+1][u] = space[v+i][u];
+                  space[v+i][u] = ' ';
                 }
               });
               x = processed[y].length;  y = 0;  // breakout
@@ -391,6 +411,9 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
           }
           MARK++;
         }
+      }
+      if (leveredGroupCount >0) {
+        destroyGroupsOfUniformColor(MIN_GROUP_SIZE);
       }
     };
   })();
