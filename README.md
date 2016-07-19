@@ -10,10 +10,14 @@ and a [hedging variant](hedge.html).
 
 Currently you can **try these out online** in firebase dev deployment environment:
 
-- [Tetris](https://tetris-2df9b.firebaseapp.com/tetris.html)
-
-![Tetris](demo/tetris-screenshot.png)
-
 - [Hedge tetris](https://tetris-2df9b.firebaseapp.com/hedge.html)
 
 ![Hedge](demo/hedge-screenshot.png)
+
+- [Colors](https://tetris-2df9b.firebaseapp.com/colors.html)
+
+![Colors](demo/colors-screenshot.png)
+
+- [Tetris](https://tetris-2df9b.firebaseapp.com/tetris.html)
+
+![Tetris](demo/tetris-screenshot.png)
