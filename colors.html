@@ -419,27 +419,9 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   })();
 
   var testCrash = function(xy, p) {
-    var crash = false;
-    for(var y = 0; y < p.length; y++) {
-      for(var x = 0; x < p[y].length; x++) {
-        if (0 > xy.y + y) {
-          if (' ' != p[y][x] &&
-              (xy.x + x < 0 || xy.x + x >= space[0].length)) {
-            return true;
-          }
-        }
-        if (' ' != p[y][x] && 0 <= xy.y + y) {
-          if (space.length - 1 < y + xy.y) {
-            return true;
-          }
-          if (' ' != space[xy.y + y][xy.x + x]) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
+    return arr2collision(space, p, xy, function(x) { return (' ' === x);});
   };
+
   var incrementScore = function(amount) {
     activePiece.score += amount;
     scoreMessage.text = activePiece.score + "";
