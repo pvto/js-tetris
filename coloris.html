@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="fi">
+<meta charset="UTF-8">
+<meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport' />
+
+<script src="lib/d3.js"></script>
+<script src="lib/lodash.js"></script>
+<script src="lib/math.js"></script>
+<script src="lib/canvas-draw.js"></script>
+<script src="lib/arr2.js"></script>
+<script src="lib/tetris-common.js"></script>
+<script src="lib/font-montserrat.js"></script>
+<link href='https://fonts.googleapis.com/css?family=Montserrat:700' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" type="text/css" href="css/common.css">
+
+<style>
+body { background-color: #202040;}
+#game-container {
+  background-color: #202040;
+}
+</style>
+
+
+<!-- Tetris -->
+<div id="game-container">
+  Please enable javascript
+</div>
+
+<script type="text/javascript">
+var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+(function (){
+  var wwdt = window.innerWidth;
+  var whgt = window.innerHeight;
+  console.log(wwdt + " " + whgt);
+  var xdim = 7;
+  var ydim = 19;
+  var block = Math.min(wwdt * 0.9 / xdim, whgt * 0.9 / ydim);
+
+  var margin = { top: block * 1, bottom: 0, left: 0, right: 0 };
+  var width = block * xdim - margin.left - margin.right;
+  var height = block * ydim - margin.top - margin.bottom;
+  var gameCanvas = d3.select("#game-container")
+      .text("")
+    .append("canvas")
+    .attr("id", "game-canvas")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .text("Sorry, your browser does not support HTML5 Canvas.")
+    .node();
+  var baseTransform = function(context) {
+    context.setTransform(1, 0, 0, 1, margin.left, margin.top);
+  };
+
+  var FONT = "'Montserrat', sans-serif";
+
+  var pieces = {
+    'I': { y0: 0,
+        p:
+          [[' ','I',' '],
+          [' ','I',' '],
+          [' ','I',' ']] }
+  };
+  var bgSpace = arr2fill(arr2(xdim, ydim), '.');
+  var space = arr2fill(arr2(xdim, ydim), ' ');
+
+  var randomColors = ['B','W','R','M','G'];
+
+  var randomPiece = (function() {
+    return function() {
+      var ret = _.cloneDeep(attrRand(pieces));
+      arr2walk(ret.p, function(arr, x) {
+        if (!isEmpty(arr[x])) {
+          arr[x] = arrRand(randomColors);
+        }
+      });
+      return ret;
+    };
+  })();
+  var initActivePiece = function(a, piece) {
+    a.piece = piece;
+    a.x = Math.floor(xdim / 2 + 0.5 - piece.p[0].length / 2),
+    a.y = piece.y0
+  };
+  var timeZero = new Date().getTime();
+  var activePiece = {
+    redraw: true, score: 0, level: 0,
+    timer: timeZero, paused: false
+  };
+  BLOCK_SCORE = [0, 40, 100, 300, 1200];
+  var scoreMessage = { x: width - block*0.2, y: block*.5,
+    text: function() { return activePiece.score + ""; },
+    font: "20px " + FONT, fill: "#ffd0ff", xalign: -1 };
+  var levelMessage = { x: block*0.25, y: block*.5,
+    text: function() { return "LEVEL " + activePiece.level;},
+    font: "20px " + FONT, fill: "#ffd0ff", xalign: 1 };
+  var pausedMessage = { x: width / 2, y: block*6,
+    text: "PAUSED",
+    fill: "#FFFFFF", xalign: 0 };
+  var messages = [ scoreMessage, levelMessage ];
+
+  initActivePiece(activePiece, randomPiece());
+
+
+
+  var drawBg0 = function(context, tick, xx, yy, ww, hh) {
+    context.fillStyle = "#000060";
+    context.fillRect(xx, yy, ww, hh);
+  };
+  var drawBg1 = function(context, tick, xx, yy, ww, hh, c, u, v) {
+  };
+
+
+  var drawPiece = function(context, tick, xx, yy, ww, hh, c) {
+    if (c == "B") {
+      fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
+        "#4060FF", 40, "#404080", 20);
+    }
+    else if (c == "W") {
+      fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
+        "#FFFFFF", 40, "#F0F0F0", 20);
+    }
+    else if (c == "R") {
+      fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
+        "#FF4060", 40, "#D02040", 20);
+    }
+    else if (c == "M") {
+      fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
+        "#FF40FF", 40, "#D020D0", 20);
+    }
+    else if (c == "G") {
+      fillTwoRects(context, xx+ww/2, yy+hh/2, ww, hh,
+        "#40F060", 40, "#004030", 20);
+    }
+  };
+  var drawBoardAt = (function() {
+    var ret = function(canvas, tick) {
+      var context = canvas.getContext("2d");
+      baseTransform(context);
+      var pieceWidth = width / xdim;
+      var pieceHeight = height / ydim;
+      for(var x = 0; x < xdim; x++) {
+        for(var y = -1; y < ydim; y++) {
+          drawBg0(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth * 0.98, pieceHeight * 0.98);
+        }
+      }
+      for(var x = 0; x < xdim; x++) {
+        for(var y = 0; y < ydim; y++) {
+          var c = bgSpace[y][x];
+          drawBg1(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight, c, x, y);
+        }
+      }
+      for(var x = 0; x < xdim; x++) {
+        for(var y = 0; y < ydim; y++) {
+          var c = space[y][x];
+          drawPiece(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight, c);
+        }
+      }
+      for(var y = 0; y < activePiece.piece.p.length; y++) {
+        for(var x = 0; x < activePiece.piece.p[y].length; x++) {
+          var c = activePiece.piece.p[y][x];
+          drawPiece(context, tick,
+            (x + activePiece.x) * pieceWidth,
+            (y + activePiece.y) * pieceHeight,
+            pieceWidth, pieceHeight, c);
+        }
+      }
+
+      removeOutdatedMessages(tick); // not really the place for this?
+
+      messages.forEach(function(message, i) {
+        if (!message.start || message.start < tick) {
+          drawMessage(context, tick, message);
+        }
+      });
+    };
+    return ret;
+  })();
+
+
+
+  var removeOutdatedMessages = function(tick) {
+    messages.forEach(function(message, i) {
+      if (message.end && tick > message.end) {
+        remove(messages, message);
+      }
+    });
+  };
+
+  var drawBoard = function() {
+    drawBoardAt(gameCanvas, new Date().getTime());
+  };
+
+  var drawMessage = function(context, tick, message) {
+    var text = _.isFunction(message.text) ? message.text() : message.text;
+    var font = message.font
+        || (block*xdim * 1.5 / (text.length + 1)) + "px " + FONT;
+    context.font = font;
+    var measurex = context.measureText(text);
+    message.drawx = message.x + measurex.width * (((message.xalign||0.0)-1)/2);
+    context.fillStyle = message.fill || "#4080B0";
+    context.fillText(text, message.drawx, message.y);
+  };
+
+  var addNotifyMessage = function(text, delay, duration, message) {
+    var start = new Date().getTime() + (delay || 0);
+    var message = message || {};
+    message.text = text;
+    message.start = start;
+    if (duration) {
+      message.end = start + duration;
+    }
+    message.x = message.x || block * xdim / 2;
+    message.y = message.y || block * ydim /4;
+    messages.push(message);
+  };
+
+  var dropOne = function() {
+    var count = 0;
+    if (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
+      activePiece.y++;
+      count++;
+    } else {
+      renew();
+    }
+    activePiece.redraw = true;
+    return count;
+  };
+
+  var renew = function() {
+    if (activePiece.gameOver === true) {
+      return;
+    }
+    paste(space, activePiece.x, activePiece.y, activePiece.piece.p);
+    destroyThreesInLine();
+    initActivePiece(activePiece, randomPiece());
+    if (testCrash({y:activePiece.y, x:activePiece.x}, activePiece.piece.p)) {
+      gameOver();
+    }
+  };
+
+  var destroyThreesInLine = function() {
+    var tmp = arr2copy(space);
+    var p = activePiece.piece.p;
+    var MARK = 'x'
+    var somethingDestroyed = false;
+    var DIRS = [[1,1],[1,-1],[1,0],[0,1]];
+    DIRS.forEach(function(dir) {
+      for(var y = 0; y < ydim; y++) {
+        for(var x = 0; x < xdim; x++) {
+          if (isEmpty(space[y][x])) {
+            continue;
+          }
+          var stack = [[x,y]];
+          for(var iter = 0; iter < 2; iter++) {
+            var pos = stack[0];
+            var pos2 = arrAdd(pos, dir);
+            while(inBounds(pos2, 0,0, xdim-1,ydim-1)
+              && space[pos2[1]][pos2[0]] == space[y][x]) {
+              pos = pos2;
+              stack.push(pos);
+              pos2 = arrAdd(pos, dir);
+            }
+            dir = arrNeg(dir);
+          }
+          if (stack.length >= 3) {
+            somethingDestroyed = true;
+            stack.forEach(function(xy) {
+              tmp[xy[1]][xy[0]] = MARK;
+            });
+          }
+        }
+      }
+    });
+    if (somethingDestroyed) {
+      var identityF = function(x){return x === MARK;};
+      var count = arr2count(tmp, identityF);
+      incrementScore(count * count);
+      arr2xywalk(tmp, function(arr2, x, y) {
+        if (identityF(arr2[y][x])) {
+          space[y][x] = ' ';
+        }
+      });
+      gravityDown(space, isEmpty);
+      destroyThreesInLine();
+    }
+  }
+
+  var testCrash = function(xy, p) {
+    return arr2collision(space, p, xy, function(x) { return (' ' === x);});
+  };
+
+  var incrementScore = function(amount) {
+    activePiece.score += amount;
+    incrementLevel();
+  };
+
+  var incrementLevel = function() {
+    var requiredPoints = 3000 * (activePiece.level + 1);
+    if (activePiece.score > requiredPoints) {
+      activePiece.level++;
+    }
+  };
+
+  var gameOver = function() {
+    if (activePiece,gameOver === true) { return; }
+    activePiece.gameOver = true;
+    var text = "Grievous, moi!";
+    console.log(text);
+    for(var time = 0; time < 1600; time += 400) {
+      addNotifyMessage(text, time, time>1000?null:200,
+        {
+          y: block * (ydim * 2 / 3),
+          x: block * (xdim / 2),
+          fill: "#FFFFFF",
+          font: (block*xdim * 1.5 / (text.length + 1)) + "px " + FONT,
+        }
+      );
+    }
+    while (testCrash({y:activePiece.y, x:activePiece.x}, activePiece.piece.p)) {
+      activePiece.y--;
+    };
+    drawBoard();
+    activePiece.redraw = true;
+  };
+
+  var doSlideX = function(xadd) {
+    if (!testCrash({y:activePiece.y, x:activePiece.x + xadd}, activePiece.piece.p)) {
+      activePiece.x += xadd;
+      return true;
+    }
+    return false;
+  };
+  var doRot = function() {
+    var p = activePiece.piece.p;
+    var tmp = arr2copy(p);
+    arr2xywalk(tmp, function(arr, x, y) {
+      arr[y][x] = p[(y + 1) % arr.length][x];
+    });
+    activePiece.piece.p = tmp;
+  };
+  var doDropOne = function() {
+    dropOne();
+  };
+  var doDropMany = function() {
+    while (!testCrash({y:activePiece.y + 1, x:activePiece.x}, activePiece.piece.p)) {
+      activePiece.y++;
+      drawBoard();
+    }
+    renew();
+  };
+  var doPause = function() {
+    activePiece.paused = !activePiece.paused;
+    if (activePiece.paused) { messages.push(pausedMessage); }
+    else { remove(messages, pausedMessage); }
+  };
+
+  document.onkeydown = function(event) {
+    activePiece.redraw = true;
+
+    if (activePiece.gameOver === true) {
+      return; }
+
+    if (80 == event.keyCode) { doPause(); }
+    if (activePiece.paused) {
+      return; }
+
+    if (37 == event.keyCode && event.ctrlKey)      { while(doSlideX(-1)) {}; }
+    else if (37 == event.keyCode) { doSlideX(-1); }
+    else if (39 == event.keyCode && event.ctrlKey) { while(doSlideX(1)) {}; }
+    else if (39 == event.keyCode) { doSlideX(1); }
+    else if (38 == event.keyCode || 34 == event.keyCode || 33 == event.keyCode) {
+      doRot(); }
+    else if (40 == event.keyCode) { doDropOne(); }
+    else if (32 == event.keyCode) { doDropMany(); }
+
+  };
+
+
+  var parentReduceSum = function(node, f) {
+    var sum = 0;
+    while (node) {
+      sum += (f(node) || 0);
+      node = node.parentNode;
+    }
+    return sum;
+  };
+
+  var GAME_CANVAS_NODE = document.getElementById("game-canvas");
+  var GAME_CONTAINER_NODE = document.getElementById("game-container");
+
+  document.onmousemove = function(event) {
+    if (activePiece.gameOver) { return; }
+    setCursor(GAME_CONTAINER_NODE, GAME_CANVAS_NODE, event, activePiece, block);
+  };
+
+  d3.select(GAME_CONTAINER_NODE)
+    .on("mousemove", function() {
+      if (activePiece.gameOver||activePiece.paused === true) {
+        return;
+      }
+      mouseDragActivePiece(GAME_CANVAS_NODE, d3.event, activePiece, block, xdim, testCrash);
+    });
+
+
+  document.onclick = function(event) {
+    activePiece.redraw = true;
+
+    if (activePiece.gameOver||activePiece.paused === true||activePiece.justDragged) {
+      return;
+    }
+
+    var cursor = setCursor(GAME_CONTAINER_NODE, GAME_CANVAS_NODE, event, activePiece, block);
+    if ("w-resize" == cursor) { doSlideX(-1); }
+    else if ("e-resize" == cursor) { doSlideX(1); }
+    else if ("all-scroll" == cursor) { doRot(); }
+    else if ("s-resize" == cursor) {
+      if (event.detail == 2) { doDropMany(); }
+      else { doDropOne(); }
+    }
+  };
+
+  var createInput = function(text, action) {
+    var action0 = function() {
+      d3.event.preventDefault();
+      d3.event.stopPropagation()
+      activePiece.redraw = true;
+      if (activePiece.gameOver|activePiece.paused === true) {
+        return;
+      }
+      action();
+    };
+    d3.select("#game-controls").append("button")
+      .attr("type", "button")
+      .attr("class", "noselect")
+      .text(text)
+      .on("click", action0)
+      .style("border-radius", "10px")
+      .style("font-size", "26px")
+      .style("width", (width / 5) + "px")
+      .style("height", (width / 6) + "px");
+  };
+  d3.select("#game-container").append("div").attr("id", "game-controls");
+  createInput("↶", doRot);
+  createInput("⇦", function(){ doSlideX(-1); });
+  createInput("⇩", doDropOne);
+  createInput("⇨", function(){ doSlideX(1); });
+  createInput("_", doDropMany);
+
+
+
+  var checkRedraw = function() {
+    var timed = false;
+    messages.forEach(function(message, i) {
+      if (message.end) {
+        timed = true;
+      }
+    });
+    if (timed === false) {
+      activePiece.redraw = false;
+    }
+  };
+
+  var drawThread = function() {
+    var now = new Date().getTime();
+    if (!activePiece.paused
+        && now > activePiece.timer + 1000 / (activePiece.level + 1)) {
+      dropOne();
+      activePiece.timer = now;
+    }
+    if (activePiece.redraw) {
+      drawBoard();
+      checkRedraw();
+    }
+    window.setTimeout(drawThread, 25);
+  };
+  drawThread();
+
+})();
+</script>
+
+</html>
