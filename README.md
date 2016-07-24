@@ -22,6 +22,10 @@ Currently you can **try these out online** in firebase dev deployment environmen
 
 ![Coloris](demo/coloris-screenshot.png)
 
-- [Tetris](https://tetris-2df9b.firebaseapp.com/tetris.html)
+- [Tetris – wide](https://tetris-2df9b.firebaseapp.com/tetris.html)
 
 ![Tetris](demo/tetris-screenshot.png)
+
+- [Tetris – traditional](https://tetris-2df9b.firebaseapp.com/tetris10.html)
+
+![Tetris](demo/tetris10-screenshot.png)
