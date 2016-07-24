@@ -18,6 +18,10 @@ Currently you can **try these out online** in firebase dev deployment environmen
 
 ![Colors](demo/colors-screenshot.png)
 
+- [Coloris](https://tetris-2df9b.firebaseapp.com/coloris.html)
+
+![Coloris](demo/coloris-screenshot.png)
+
 - [Tetris](https://tetris-2df9b.firebaseapp.com/tetris.html)
 
 ![Tetris](demo/tetris-screenshot.png)
