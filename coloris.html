@@ -82,10 +82,12 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     a.x = Math.floor(xdim / 2 + 0.5 - piece.p[0].length / 2),
     a.y = piece.y0
   };
+
   var timeZero = new Date().getTime();
   var activePiece = {
     redraw: true, score: 0, level: 0,
-    timer: timeZero, paused: false
+    timer: timeZero, paused: false,
+    msgYRoll: 0
   };
   BLOCK_SCORE = [0, 40, 100, 300, 1200];
   var scoreMessage = { x: width - block*0.2, y: block*.5,
@@ -101,6 +103,10 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
   initActivePiece(activePiece, randomPiece());
 
+  for(var tt = 0; tt < 2000; tt += 400) {
+    addNotifyMessage(messages, {y: block * 6}, "Line three", tt, 200, block, xdim, ydim);
+    addNotifyMessage(messages, {y: block * 8}, "Get extra for flags", tt, 200, block, xdim, ydim);
+  }
 
 
   var drawBg0 = function(context, tick, xx, yy, ww, hh) {
@@ -187,6 +193,9 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     messages.forEach(function(message, i) {
       if (message.end && tick > message.end) {
         remove(messages, message);
+        if (message.onExit) {
+          message.onExit();
+        }
       }
     });
   };
@@ -241,12 +250,13 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     var flagBlinks = [];
     for(var yy = 0; yy < 3; yy++) {
-      testYFlag(space, activePiece.y + yy, activePiece.x).forEach(function(bl) { flagBlinks.push(bl); });
-      for (var xx = -2; xx < 3; xx++) {
-        testXFlag(space, activePiece.y + yy, activePiece.x + xx).forEach(function(bl) { flagBlinks.push(bl); });
+      testYFlag(space, activePiece.y + yy, activePiece.x)
+        .forEach(function(bl) { flagBlinks.push(bl); });
+      for (var xx = -2; xx < 1; xx++) {
+        testXFlag(space, activePiece.y + yy, activePiece.x + xx)
+          .forEach(function(bl) { flagBlinks.push(bl); });
       }
     }
-    console.log(flagBlinks);
     if (!destroyThreesInLine()) { // blink only if destroyed nothing... yield flag points anyway
       flagBlinks.forEach(function(bl) { messages.push(bl); });
     }
@@ -329,7 +339,10 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       if (a === ccc[0] && b === ccc[1] && c === ccc[2]) {
         incrementScore(flag[2]);
         console.log(flag[1]);
-        addNotifyMessage(messages, {text:flag[1], fill:"#FFFFFF", y:block * (ydim-2)}, null, 100, 1300, block, xdim, ydim);
+        activePiece.msgYRoll -= 2;
+        addNotifyMessage(messages, {text:flag[1], fill:"#FFFFFF", y:block * (ydim+activePiece.msgYRoll),
+            onExit: function(){ activePiece.msgYRoll += 2; } },
+            null, 100, 1100, block, xdim, ydim);
         found = true;
       }
     });
@@ -352,7 +365,7 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     if (x < 0 || x > xdim - 3) {
       return ret;
     }
-    if (testFlag(XFLAGS,  space[y][x], space[y][x+1], space[y][x+1])) {
+    if (testFlag(XFLAGS,  space[y][x], space[y][x+1], space[y][x+2])) {
       [0,1,2].forEach(function(aa) {
         addBlink(ret, bgSpace, x+aa, y, 1600, 400, '!', ' ');
       });
