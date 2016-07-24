@@ -35,6 +35,7 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   var xdim = 7;
   var ydim = 19;
   var block = Math.min(wwdt * 0.9 / xdim, whgt * 0.9 / ydim);
+  var FADE_FACTOR = wwdt/532;
 
   var margin = { top: block * 1, bottom: 0, left: 0, right: 0 };
   var width = block * xdim - margin.left - margin.right;
@@ -140,7 +141,7 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       var pieceHeight = height / ydim;
       for(var x = 0; x < xdim; x++) {
         for(var y = -1; y < ydim; y++) {
-          drawBg0(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth * 0.98, pieceHeight * 0.98);
+          drawBg0(context, tick, x * pieceWidth, y * pieceHeight, pieceWidth * Math.pow(0.99, FADE_FACTOR), pieceHeight * Math.pow(0.995, FADE_FACTOR));
         }
       }
       for(var x = 0; x < xdim; x++) {
