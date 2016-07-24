@@ -228,16 +228,6 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     context.fillText(text, message.drawx, message.y);
   };
 
-  var addNotifyMessage = function(text, delay, duration, message) {
-    var start = new Date().getTime() + (delay || 0);
-    var message = message || {};
-    message.text = text;
-    message.start = start;
-    message.end = start + (duration || 1000);
-    message.x = message.x || block * xdim / 2;
-    message.y = message.y || block * ydim /4;
-    messages.push(message);
-  };
 
   var dropOne = function() {
     var count = 0;
@@ -285,12 +275,12 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       if (xdim * ydim === arr2contains(space, ' ')) {
         increment *= 4;
         for(var tt = 0; tt < 1200; tt += 400) {
-          addNotifyMessage("4x points", tt, 200);
-          addNotifyMessage("4x POINTS", tt+200, 200);
+          addNotifyMessage(messages, {}, "4x points", tt, 200, block, xdim, ydim);
+          addNotifyMessage(messages, {}, "4x POINTS", tt+200, 200, block, xdim, ydim);
         }
       }
       if (n == 4) {
-        addNotifyMessage("" + increment, 200, 800, { y: block * ydim / 6})
+        addNotifyMessage(messages, { y: block * ydim / 6}, "" + increment, 200, 800, block, xdim, ydim)
       }
       incrementScore(increment);
     }

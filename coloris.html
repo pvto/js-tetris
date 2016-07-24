@@ -286,8 +286,9 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       increment *= 4;
       for(var tt = 0; tt < 1200; tt += 400) {
         for(var yy = 0; yy < 4; yy++) {
-          addNotifyMessage(messages, "4x "+(yy%2==0?"points":"POINTS"), tt + yy*100, 120,
-            {fill: "#FFFFFF", y : block * (2 + yy * 4)}, block, xdim, ydim);
+          addNotifyMessage(messages, {fill: "#FFFFFF", y : block * (2 + yy * 4)},
+            "4x "+(yy%2==0?"points":"POINTS"), tt + yy*100, 120,
+            block, xdim, ydim);
         }
       }
     }
@@ -308,13 +309,14 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     var text = "Grievous, moi!";
     console.log(text);
     for(var time = 0; time < 1600; time += 400) {
-      addNotifyMessage(text, time, time>1000?null:200,
+      addNotifyMessage(messages,
         {
           y: block * (ydim * 2 / 3),
           x: block * (xdim / 2),
           fill: "#FFFFFF",
           font: (block*xdim * 1.5 / (text.length + 1)) + "px " + FONT,
-        }
+        },
+        text, time, time>1000?null:200
       );
     }
     while (testCrash({y:activePiece.y, x:activePiece.x}, activePiece.piece.p)) {

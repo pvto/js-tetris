@@ -136,18 +136,8 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
   initActivePiece(activePiece, randomPiece());
 
-  var addNotifyMessage = function(text, delay, duration, message) {
-    var start = new Date().getTime() + (delay || 0);
-    var message = message || {};
-    message.text = text;
-    message.start = start;
-    message.end = start + (duration || 1000);
-    message.x = message.x || block * xdim / 2;
-    message.y = message.y || block * ydim /4;
-    messages.push(message);
-  };
   for(var tt = 0; tt < 2000; tt += 400) {
-    addNotifyMessage("GET " + MIN_GROUP_SIZE, tt, 200);
+    addNotifyMessage(messages, {}, "GET " + MIN_GROUP_SIZE, tt, 200, block, xdim, ydim);
   }
 
 
