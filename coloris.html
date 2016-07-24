@@ -57,9 +57,9 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   var pieces = {
     'I': { y0: 0,
         p:
-          [[' ','I',' '],
-          [' ','I',' '],
-          [' ','I',' ']] }
+          [['I'],
+          ['I'],
+          ['I']] }
   };
   var bgSpace = arr2fill(arr2(xdim, ydim), '.');
   var space = arr2fill(arr2(xdim, ydim), ' ');
@@ -108,6 +108,10 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     context.fillRect(xx, yy, ww, hh);
   };
   var drawBg1 = function(context, tick, xx, yy, ww, hh, c, u, v) {
+    if (c == "!") {
+      context.fillStyle = "#FFFFFF";
+      context.fillRect(xx,yy,ww,hh);
+    }
   };
 
 
@@ -170,7 +174,7 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
       messages.forEach(function(message, i) {
         if (!message.start || message.start < tick) {
-          drawMessage(context, tick, message);
+          handleMessage(context, tick, message);
         }
       });
     };
@@ -191,6 +195,15 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     drawBoardAt(gameCanvas, new Date().getTime());
   };
 
+  var handleMessage = function(context, tick, message) {
+    if (message.action) {
+      doMessageAction(context, tick, message);
+    }
+    if (message.text) {
+      drawMessage(context, tick, message);
+    }
+  };
+
   var drawMessage = function(context, tick, message) {
     var text = _.isFunction(message.text) ? message.text() : message.text;
     var font = message.font
@@ -200,6 +213,10 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     message.drawx = message.x + measurex.width * (((message.xalign||0.0)-1)/2);
     context.fillStyle = message.fill || "#4080B0";
     context.fillText(text, message.drawx, message.y);
+  };
+
+  var doMessageAction = function(context, tick, message) {
+    message.action(context, tick, message);
   };
 
 
@@ -215,12 +232,24 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     return count;
   };
 
+
   var renew = function() {
     if (activePiece.gameOver === true) {
       return;
     }
     paste(space, activePiece.x, activePiece.y, activePiece.piece.p);
-    destroyThreesInLine();
+
+    var flagBlinks = [];
+    for(var yy = 0; yy < 3; yy++) {
+      testYFlag(space, activePiece.y + yy, activePiece.x).forEach(function(bl) { flagBlinks.push(bl); });
+      for (var xx = -2; xx < 3; xx++) {
+        testXFlag(space, activePiece.y + yy, activePiece.x + xx).forEach(function(bl) { flagBlinks.push(bl); });
+      }
+    }
+    console.log(flagBlinks);
+    if (!destroyThreesInLine()) { // blink only if destroyed nothing... yield flag points anyway
+      flagBlinks.forEach(function(bl) { messages.push(bl); });
+    }
     initActivePiece(activePiece, randomPiece());
     if (testCrash({y:activePiece.y, x:activePiece.x}, activePiece.piece.p)) {
       gameOver();
@@ -263,6 +292,8 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     if (somethingDestroyed) {
       var identityF = function(x){return x === MARK;};
       var count = arr2count(tmp, identityF);
+      var increment = count * count;
+
       arr2xywalk(tmp, function(arr2, x, y) {
         if (identityF(arr2[y][x])) {
           space[y][x] = ' ';
@@ -270,12 +301,64 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       });
       gravityDown(space, isEmpty);
 
-      var increment = count * count;
       incrementScore(increment);
 
       destroyThreesInLine();
     }
+    return somethingDestroyed;
   }
+
+
+  var YFLAGS = [
+    ["RWB", "Netherlands", 15],
+    ["WBR", "Russia", 25],
+    ["BWB", "El Salvador", 25],
+    ["RWR", "Austria", 30],
+    ["WGR", "Bulgary", 35]
+  ];
+  var XFLAGS = [
+    ["RWR", "Perú", 35],
+    ["BWR", "France", 40],
+    ["GWR", "Italy", 45],
+    ["GWG", "Niger", 50]
+  ];
+  var testFlag = function(flags, a,b,c) {
+    var found = false;
+    flags.forEach(function(flag) {
+      var ccc = flag[0];
+      if (a === ccc[0] && b === ccc[1] && c === ccc[2]) {
+        incrementScore(flag[2]);
+        console.log(flag[1]);
+        addNotifyMessage(messages, {text:flag[1], fill:"#FFFFFF", y:block * (ydim-2)}, null, 100, 1300, block, xdim, ydim);
+        found = true;
+      }
+    });
+    return found;
+  };
+  var testYFlag = function(space, y, x) {
+    var ret = [];
+    if (y < 0 || y > ydim - 3) {
+      return ret;
+    }
+    if (testFlag(YFLAGS,  space[y][x], space[y+1][x], space[y+2][x])) {
+      [0,1,2].forEach(function(aa) {
+        addBlink(ret, bgSpace, x, y+aa, 1600, 400, '!', ' ');
+      });
+    }
+    return ret;
+  };
+  var testXFlag = function(space, y, x) {
+    var ret = [];
+    if (x < 0 || x > xdim - 3) {
+      return ret;
+    }
+    if (testFlag(XFLAGS,  space[y][x], space[y][x+1], space[y][x+1])) {
+      [0,1,2].forEach(function(aa) {
+        addBlink(ret, bgSpace, x+aa, y, 1600, 400, '!', ' ');
+      });
+    }
+    return ret;
+  };
 
   var testCrash = function(xy, p) {
     return arr2collision(space, p, xy, function(x) { return (' ' === x);});
@@ -378,15 +461,6 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
   };
 
-
-  var parentReduceSum = function(node, f) {
-    var sum = 0;
-    while (node) {
-      sum += (f(node) || 0);
-      node = node.parentNode;
-    }
-    return sum;
-  };
 
   var GAME_CANVAS_NODE = document.getElementById("game-canvas");
   var GAME_CONTAINER_NODE = document.getElementById("game-container");
