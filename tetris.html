@@ -386,19 +386,13 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   var GAME_CANVAS_NODE = document.getElementById("game-canvas");
   var GAME_CONTAINER_NODE = document.getElementById("game-container");
 
-  d3.select("#game-container")
-    .on("mousemove", function() {
-      if (activePiece.gameOver|activePiece.paused === true) {
-        return;
-      }
-      mouseDragActivePiece(GAME_CANVAS_NODE, d3.event, activePiece, block, xdim, testCrash);
-    });
+  addDragListeners(GAME_CONTAINER_NODE, GAME_CANVAS_NODE, activePiece, block, xdim, ydim, testCrash);
 
 
   document.onclick = function(event) {
     activePiece.redraw = true;
 
-    if (activePiece.gameOver|activePiece.paused === true||activePiece.justDragged) {
+    if (activePiece.gameOver|activePiece.paused === true) {
       return;
     }
 

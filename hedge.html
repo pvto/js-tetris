@@ -450,20 +450,13 @@ var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   };
 
 
-  d3.select(GAME_CONTAINER_NODE)
-    .on("mousemove", function() {
-      if (activePiece.gameOver||activePiece.paused === true) {
-        return;
-      }
-      mouseDragActivePiece(GAME_CANVAS_NODE, d3.event, activePiece, block, xdim, testCrash);
-    });
-
+  addDragListeners(GAME_CONTAINER_NODE, GAME_CANVAS_NODE, activePiece, block, xdim, ydim, testCrash);
 
 
   document.onclick = function(event) {
     activePiece.redraw = true;
 
-    if (activePiece.gameOver||activePiece.paused === true||activePiece.justDragged) {
+    if (activePiece.gameOver||activePiece.paused === true) {
       return;
     }
 
